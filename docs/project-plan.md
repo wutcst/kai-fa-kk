@@ -63,21 +63,21 @@ main / master
 
 | Issue | 标题 | 负责人 | Milestone | 建议分支 | 时间 |
 |---|---|---|---|---|---|
-| #1 | `[Init] 初始化仓库目录与分支模型` | 组长 | M1 | `feature/project-structure` | Day 1 |
-| #2 | `[Docs] 编写项目需求与开发计划文档` | 组长 | M1 | `feature/docs-project-plan` | Day 1 |
-| #3 | `[Workflow] 创建 Issue、PR 模板与协作规范` | 组长 | M1 | `feature/workflow-template` | Day 1 |
-| #4 | `[Backend] 初始化 Spring Boot 后端项目` | 组长 | M1 | `feature/backend-init` | Day 1 - Day 2 |
-| #5 | `[Frontend] 初始化 Vue 3 前端项目` | 组员 | M1 | `feature/frontend-init` | Day 1 - Day 2 |
-| #6 | `[Backend] 实现玩家、物品、房间核心模型` | 组长 | M2 | `feature/backend-domain-models` | Day 3 |
-| #7 | `[Backend] 实现地图、游戏会话与初始状态` | 组长 | M2 | `feature/backend-game-session` | Day 3 - Day 4 |
-| #8 | `[Backend] 实现移动、体力、门票与金额规则` | 组长 | M2 | `feature/backend-move-cost` | Day 4 |
-| #9 | `[Backend] 实现背包、拾取、丢弃与使用物品` | 组长 | M2 | `feature/backend-inventory` | Day 5 |
-| #10 | `[Backend] 实现暗语开门、救援、通关和失败机制` | 组长 | M2 | `feature/backend-special-rules` | Day 5 - Day 6 |
-| #11 | `[Frontend] 实现游戏主界面与状态展示` | 组员 | M2 | `feature/frontend-game-layout` | Day 3 - Day 4 |
-| #12 | `[Frontend] 实现 API 调用封装与基础交互` | 组员 | M2 | `feature/frontend-api-client` | Day 4 - Day 5 |
-| #13 | `[Frontend] 实现完整游戏操作与提示弹窗` | 组员 | M2 | `feature/frontend-game-actions` | Day 5 - Day 7 |
-| #14 | `[Test/CI] 完成测试、代码检查与自动化构建` | 组长 | M3 | `feature/test-and-ci` | Day 8 |
-| #15 | `[Docs/Release] 完成 README、REPORT、AI 说明、视频与最终发布` | 组长 + 组员 | M3 | `feature/final-docs-release` | Day 9 - Day 10 |
+| #1 | `[Init] 初始化仓库目录与分支模型` | 谢恺燊 | M1 | `feature/project-structure` | Day 1 |
+| #2 | `[Docs] 编写项目需求与开发计划文档` | 谢恺燊 | M1 | `feature/docs-project-plan` | Day 1 |
+| #3 | `[Workflow] 创建 Issue、PR 模板与协作规范` | 谢恺燊 | M1 | `feature/workflow-template` | Day 1 |
+| #4 | `[Backend] 初始化 Spring Boot 后端项目` | 谢恺燊 | M1 | `feature/backend-init` | Day 1 - Day 2 |
+| #5 | `[Frontend] 初始化 Vue 3 前端项目` | 黄凯峰 | M1 | `feature/frontend-init` | Day 1 - Day 2 |
+| #6 | `[Backend] 实现玩家、物品、房间核心模型` | 谢恺燊 | M2 | `feature/backend-domain-models` | Day 3 |
+| #7 | `[Backend] 实现地图、游戏会话与初始状态` | 谢恺燊 | M2 | `feature/backend-game-session` | Day 3 - Day 4 |
+| #8 | `[Backend] 实现移动、体力、门票与金额规则` | 谢恺燊 | M2 | `feature/backend-move-cost` | Day 4 |
+| #9 | `[Backend] 实现背包、拾取、丢弃与使用物品` | 谢恺燊 | M2 | `feature/backend-inventory` | Day 5 |
+| #10 | `[Backend] 实现暗语开门、救援、通关和失败机制` | 谢恺燊 | M2 | `feature/backend-special-rules` | Day 5 - Day 6 |
+| #11 | `[Frontend] 实现游戏主界面与状态展示` | 黄凯峰 | M2 | `feature/frontend-game-layout` | Day 3 - Day 4 |
+| #12 | `[Frontend] 实现 API 调用封装与基础交互` | 黄凯峰 | M2 | `feature/frontend-api-client` | Day 4 - Day 5 |
+| #13 | `[Frontend] 实现完整游戏操作与提示弹窗` | 黄凯峰 | M2 | `feature/frontend-game-actions` | Day 5 - Day 7 |
+| #14 | `[Test/CI] 完成测试、代码检查与自动化构建` | 谢恺燊 | M3 | `feature/test-and-ci` | Day 8 |
+| #15 | `[Docs/Release] 完成 README、REPORT、AI 说明、视频与最终发布` | 谢恺燊，黄凯峰 | M3 | `feature/final-docs-release` | Day 9 - Day 10 |
 
 ## 6. 每日执行计划
 
