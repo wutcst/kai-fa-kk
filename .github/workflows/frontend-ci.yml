@@ -49,15 +49,30 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Run frontend lint
+      - name: Check frontend scripts
         if: steps.frontend-check.outputs.exists == 'true'
+        id: frontend-scripts
+        working-directory: frontend
+        run: |
+          node -e "const fs = require('fs'); const scripts = JSON.parse(fs.readFileSync('package.json', 'utf8')).scripts || {}; const out = process.env.GITHUB_OUTPUT; fs.appendFileSync(out, 'lint=' + Boolean(scripts.lint) + '\n'); fs.appendFileSync(out, 'test_run=' + Boolean(scripts['test:run']) + '\n');"
+
+      - name: Run frontend lint
+        if: steps.frontend-check.outputs.exists == 'true' && steps.frontend-scripts.outputs.lint == 'true'
         working-directory: frontend
         run: npm run lint
 
+      - name: Skip frontend lint
+        if: steps.frontend-check.outputs.exists == 'true' && steps.frontend-scripts.outputs.lint != 'true'
+        run: echo "frontend/package.json does not define a lint script yet. Skip lint until Issue #5 adds it."
+
       - name: Run frontend tests
-        if: steps.frontend-check.outputs.exists == 'true'
+        if: steps.frontend-check.outputs.exists == 'true' && steps.frontend-scripts.outputs.test_run == 'true'
         working-directory: frontend
         run: npm run test:run
+
+      - name: Skip frontend tests
+        if: steps.frontend-check.outputs.exists == 'true' && steps.frontend-scripts.outputs.test_run != 'true'
+        run: echo "frontend/package.json does not define a test:run script yet. Skip tests until Issue #5 adds it."
 
       - name: Build frontend
         if: steps.frontend-check.outputs.exists == 'true'
