@@ -1,0 +1,64 @@
+name: Backend CI
+
+on:
+  push:
+    branches:
+      - develop
+      - master
+      - backend/dev
+      - 'feature/**'
+  pull_request:
+    branches:
+      - develop
+      - master
+      - backend/dev
+  workflow_dispatch:
+
+jobs:
+  backend-style-test-package:
+    name: Backend Style Test Package
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check backend project
+        id: backend-check
+        run: |
+          if [ -f backend/pom.xml ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "backend/pom.xml does not exist yet. Skip backend CI."
+          fi
+
+      - name: Set up JDK 17
+        if: steps.backend-check.outputs.exists == 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Run backend style check
+        if: steps.backend-check.outputs.exists == 'true'
+        working-directory: backend
+        run: mvn checkstyle:check
+
+      - name: Run backend tests
+        if: steps.backend-check.outputs.exists == 'true'
+        working-directory: backend
+        run: mvn test
+
+      - name: Package backend jar
+        if: steps.backend-check.outputs.exists == 'true'
+        working-directory: backend
+        run: mvn package -DskipTests
+
+      - name: Upload backend jar
+        if: steps.backend-check.outputs.exists == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jar
+          path: backend/target/*.jar
