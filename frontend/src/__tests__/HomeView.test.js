@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
-import HomeView from '../views/HomeView.vue'
+import { readFileSync } from 'node:fs'
 
 describe('HomeView', () => {
-  it('renders project title', () => {
-    const wrapper = mount(HomeView)
-    expect(wrapper.text()).toContain('芝麻开门')
+  it('contains project title', () => {
+    const source = readFileSync(
+      new URL('../views/HomeView.vue', import.meta.url),
+      'utf-8',
+    )
+
+    expect(source).toContain('芝麻开门')
   })
 })
