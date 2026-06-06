@@ -19,6 +19,9 @@ import cn.edu.whut.sept.sesame.model.Player;
 import cn.edu.whut.sept.sesame.model.Room;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import org.springframework.stereotype.Service;
 
 /**
@@ -28,16 +31,11 @@ import org.springframework.stereotype.Service;
 public class GameService {
 
     /**
-     * 默认会话编号。
-     */
-    public static final String DEFAULT_SESSION_ID = "default-session";
-
-    /**
      * 玩家初始所在房间编号。
      */
     public static final String START_ROOM_ID = "entrance";
 
-    private GameSession currentSession;
+    private final ConcurrentMap<String, GameSession> sessions = new ConcurrentHashMap<>();
 
     /**
      * 开始一局新游戏，并返回初始游戏状态。
@@ -45,35 +43,48 @@ public class GameService {
      * @return 初始游戏状态
      */
     public GameState startGame() {
-        currentSession = createInitialSession();
-        currentSession.addLog("你站在秘窟入口，石壁上刻着若隐若现的芝麻纹路。");
-        currentSession.addLog("前方传来机关转动的低响，冒险正式开始。");
-        return GameState.from(currentSession, "游戏已开始。");
+        return startGame(createSessionId());
+    }
+
+    /**
+     * 使用指定会话编号开始一局新游戏，并返回初始游戏状态。
+     *
+     * @param sessionId 会话编号
+     * @return 初始游戏状态
+     */
+    public GameState startGame(String sessionId) {
+        GameSession session = createInitialSession(sessionId);
+        session.addLog("你站在秘窟入口，石壁上刻着若隐若现的芝麻纹路。");
+        session.addLog("前方传来机关转动的低响，冒险正式开始。");
+        sessions.put(session.getId(), session);
+        return GameState.from(session, "游戏已开始。");
     }
 
     /**
      * 获取当前游戏状态。
      *
+     * @param sessionId 会话编号
      * @return 当前游戏状态
      */
-    public GameState getState() {
-        GameSession session = requireCurrentSession();
+    public GameState getState(String sessionId) {
+        GameSession session = requireSession(sessionId);
         return GameState.from(session, "当前游戏状态已刷新。");
     }
 
     /**
      * 获取当前游戏会话，主要用于服务层测试和后续业务规则复用。
      *
+     * @param sessionId 会话编号
      * @return 当前游戏会话
      */
-    GameSession getCurrentSession() {
-        return requireCurrentSession();
+    GameSession getCurrentSession(String sessionId) {
+        return requireSession(sessionId);
     }
 
-    private GameSession createInitialSession() {
+    private GameSession createInitialSession(String sessionId) {
         Map<String, Room> rooms = createRooms();
         Player player = new Player(START_ROOM_ID);
-        return new GameSession(DEFAULT_SESSION_ID, player, rooms, GameStatus.IN_PROGRESS);
+        return new GameSession(sessionId, player, rooms, GameStatus.IN_PROGRESS);
     }
 
     private Map<String, Room> createRooms() {
@@ -91,7 +102,7 @@ public class GameService {
         connectRooms(hall, "east", trap);
         connectRooms(hall, "south", exit);
         connectRooms(trap, "east", treasure);
-        connectRooms(treasure, "south", exit);
+        connectRooms(treasure, "east", exit);
 
         entrance.addItem(new Item("old-map", "残旧地图", "标记着秘窟大致结构的羊皮纸。", ItemType.KEY, 1, 0, 0, 0));
         supply.addItem(new Item("clean-water", "清水", "饮用后可以恢复少量体力。", ItemType.SUPPLY, 2, 10, 0, 0));
@@ -111,8 +122,18 @@ public class GameService {
     }
 
     private void connectRooms(Room source, String direction, Room target) {
-        source.addExit(direction, target.getId());
-        target.addExit(oppositeDirection(direction), source.getId());
+        String normalizedDirection = normalizeDirection(direction);
+        if (source.getExit(normalizedDirection).isPresent()) {
+            throw new IllegalStateException("重复出口定义：" + source.getId() + " -> " + normalizedDirection);
+        }
+
+        String opposite = oppositeDirection(normalizedDirection);
+        if (target.getExit(opposite).isPresent()) {
+            throw new IllegalStateException("重复出口定义：" + target.getId() + " -> " + opposite);
+        }
+
+        source.addExit(normalizedDirection, target.getId());
+        target.addExit(opposite, source.getId());
     }
 
     private String oppositeDirection(String direction) {
@@ -130,10 +151,27 @@ public class GameService {
         }
     }
 
-    private GameSession requireCurrentSession() {
-        if (currentSession == null) {
-            throw new IllegalStateException("游戏尚未开始，请先调用 startGame。");
+    private String createSessionId() {
+        return "game-session-" + UUID.randomUUID();
+    }
+
+    private GameSession requireSession(String sessionId) {
+        String normalizedSessionId = requireText(sessionId, "会话编号不能为空");
+        GameSession session = sessions.get(normalizedSessionId);
+        if (session == null) {
+            throw new IllegalStateException("游戏尚未开始或会话不存在，请先调用 startGame。");
         }
-        return currentSession;
+        return session;
+    }
+
+    private String normalizeDirection(String direction) {
+        return requireText(direction, "方向不能为空").trim().toLowerCase();
+    }
+
+    private String requireText(String value, String message) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(message);
+        }
+        return value;
     }
 }

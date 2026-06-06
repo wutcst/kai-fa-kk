@@ -12,12 +12,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import cn.edu.whut.sept.sesame.service.GameService;
+import com.jayway.jsonpath.JsonPath;
+import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 /**
  * 测试 GameController 控制器。
@@ -38,9 +40,9 @@ class GameControllerTest {
     void startGameReturnsInitialState() throws Exception {
         mockMvc.perform(post("/api/game/start"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.sessionId").value(GameService.DEFAULT_SESSION_ID))
+                .andExpect(jsonPath("$.sessionId").isNotEmpty())
                 .andExpect(jsonPath("$.status").value("IN_PROGRESS"))
-                .andExpect(jsonPath("$.player.currentRoomId").value(GameService.START_ROOM_ID))
+                .andExpect(jsonPath("$.player.currentRoomId").value("entrance"))
                 .andExpect(jsonPath("$.currentRoom.name").value("秘窟入口"));
     }
 
@@ -51,13 +53,27 @@ class GameControllerTest {
      */
     @Test
     void getStateReturnsCurrentStateAfterStart() throws Exception {
-        mockMvc.perform(post("/api/game/start"))
-                .andExpect(status().isOk());
-
-        mockMvc.perform(get("/api/game/state"))
+        MvcResult startResult = mockMvc.perform(post("/api/game/start"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.sessionId").value(GameService.DEFAULT_SESSION_ID))
-                .andExpect(jsonPath("$.currentRoom.id").value(GameService.START_ROOM_ID))
+                .andReturn();
+        String responseBody = startResult.getResponse().getContentAsString(StandardCharsets.UTF_8);
+        String sessionId = JsonPath.read(responseBody, "$.sessionId");
+
+        mockMvc.perform(get("/api/game/state").param("sessionId", sessionId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sessionId").value(sessionId))
+                .andExpect(jsonPath("$.currentRoom.id").value("entrance"))
                 .andExpect(jsonPath("$.logs").isArray());
+    }
+
+    /**
+     * 确认未知会话读取状态时会返回冲突状态码。
+     *
+     * @throws Exception MockMvc 请求异常
+     */
+    @Test
+    void getStateReturnsConflictWhenSessionDoesNotExist() throws Exception {
+        mockMvc.perform(get("/api/game/state").param("sessionId", "missing-session"))
+                .andExpect(status().isConflict());
     }
 }

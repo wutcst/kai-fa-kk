@@ -15,10 +15,13 @@ package cn.edu.whut.sept.sesame.controller;
 
 import cn.edu.whut.sept.sesame.dto.GameState;
 import cn.edu.whut.sept.sesame.service.GameService;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * 提供游戏会话相关 REST 接口。
@@ -51,10 +54,15 @@ public class GameController {
     /**
      * 获取当前游戏状态。
      *
+     * @param sessionId 会话编号
      * @return 当前游戏状态
      */
     @GetMapping("/state")
-    public GameState getState() {
-        return gameService.getState();
+    public GameState getState(@RequestParam String sessionId) {
+        try {
+            return gameService.getState(sessionId);
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, exception.getMessage(), exception);
+        }
     }
 }
