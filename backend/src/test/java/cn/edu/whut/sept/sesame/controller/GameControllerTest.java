@@ -76,4 +76,25 @@ class GameControllerTest {
         mockMvc.perform(get("/api/game/state").param("sessionId", "missing-session"))
                 .andExpect(status().isConflict());
     }
+
+    /**
+     * 确认移动接口可以返回移动后的游戏状态。
+     *
+     * @throws Exception MockMvc 请求异常
+     */
+    @Test
+    void moveReturnsStateAfterPlayerMoves() throws Exception {
+        MvcResult startResult = mockMvc.perform(post("/api/game/start"))
+                .andExpect(status().isOk())
+                .andReturn();
+        String responseBody = startResult.getResponse().getContentAsString(StandardCharsets.UTF_8);
+        String sessionId = JsonPath.read(responseBody, "$.sessionId");
+
+        mockMvc.perform(post("/api/game/move")
+                        .param("sessionId", sessionId)
+                        .param("direction", "east"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.currentRoom.id").value("stone-hall"))
+                .andExpect(jsonPath("$.player.stamina").value(25));
+    }
 }

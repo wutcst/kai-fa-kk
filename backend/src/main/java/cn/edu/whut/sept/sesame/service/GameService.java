@@ -2,8 +2,8 @@
  * 该类是“芝麻开门”后端的游戏会话服务。
  * 游戏会话服务负责创建初始地图、初始化玩家，并向前端提供当前游戏状态。
  *
- * GameService 当前只实现开始游戏和读取状态，不处理移动扣体力、门票、背包和暗语规则。
- * 这些规则会在后续 Issue 中继续基于当前会话模型扩展。
+ * GameService 当前实现开始游戏、读取状态、移动、门票扣费和体力消耗规则。
+ * 背包、物品使用、救援、暗语和通关规则会在后续 Issue 中继续基于当前会话模型扩展。
  *
  * @author 谢恺燊
  * @version 1.0
@@ -35,6 +35,16 @@ public class GameService {
      */
     public static final String START_ROOM_ID = "entrance";
 
+    /**
+     * 玩家进入秘窟需要支付的入场费。
+     */
+    public static final int TICKET_COST = 10;
+
+    /**
+     * 玩家每次合法移动需要消耗的体力。
+     */
+    public static final int MOVE_STAMINA_COST = 5;
+
     private final ConcurrentMap<String, GameSession> sessions = new ConcurrentHashMap<>();
 
     /**
@@ -53,7 +63,26 @@ public class GameService {
      * @return 初始游戏状态
      */
     public GameState startGame(String sessionId) {
-        GameSession session = createInitialSession(sessionId);
+        return startGame(sessionId, Player.DEFAULT_MONEY);
+    }
+
+    /**
+     * 使用指定会话编号和初始金额开始一局新游戏，并返回初始游戏状态。
+     *
+     * @param sessionId 会话编号
+     * @param initialMoney 初始金额
+     * @return 初始游戏状态
+     */
+    public GameState startGame(String sessionId, int initialMoney) {
+        GameSession session = createInitialSession(sessionId, initialMoney);
+        if (!session.getPlayer().pay(TICKET_COST)) {
+            session.setStatus(GameStatus.FAILED);
+            session.addLog("金额不足，无法支付入场费。");
+            sessions.put(session.getId(), session);
+            return GameState.from(session, "金额不足，无法开始探索。");
+        }
+
+        session.addLog("你支付了 " + TICKET_COST + " 金币入场费。");
         session.addLog("你站在秘窟入口，石壁上刻着若隐若现的芝麻纹路。");
         session.addLog("前方传来机关转动的低响，冒险正式开始。");
         sessions.put(session.getId(), session);
@@ -72,6 +101,43 @@ public class GameService {
     }
 
     /**
+     * 按指定方向移动玩家，并返回移动后的游戏状态。
+     *
+     * @param sessionId 会话编号
+     * @param direction 移动方向
+     * @return 移动后的游戏状态
+     */
+    public GameState move(String sessionId, String direction) {
+        GameSession session = requireSession(sessionId);
+        if (session.getStatus() != GameStatus.IN_PROGRESS) {
+            return GameState.from(session, "游戏已经结束，不能继续移动。");
+        }
+
+        Player player = session.getPlayer();
+        Room currentRoom = session.getCurrentRoom();
+        String normalizedDirection = normalizeDirection(direction);
+        String targetRoomId = currentRoom.getExit(normalizedDirection).orElse(null);
+        if (targetRoomId == null) {
+            String message = "当前房间没有通向 " + normalizedDirection + " 的出口。";
+            session.addLog(message);
+            return GameState.from(session, message);
+        }
+
+        if (player.getStamina() < MOVE_STAMINA_COST) {
+            String message = "体力不足，无法移动。";
+            session.addLog(message);
+            return GameState.from(session, message);
+        }
+
+        player.decreaseStamina(MOVE_STAMINA_COST);
+        player.moveTo(targetRoomId);
+        Room targetRoom = session.getCurrentRoom();
+        String message = "你向 " + normalizedDirection + " 移动，进入了" + targetRoom.getName() + "。";
+        session.addLog(message + " 消耗体力 " + MOVE_STAMINA_COST + "。");
+        return GameState.from(session, message);
+    }
+
+    /**
      * 获取当前游戏会话，主要用于服务层测试和后续业务规则复用。
      *
      * @param sessionId 会话编号
@@ -81,9 +147,10 @@ public class GameService {
         return requireSession(sessionId);
     }
 
-    private GameSession createInitialSession(String sessionId) {
+    private GameSession createInitialSession(String sessionId, int initialMoney) {
         Map<String, Room> rooms = createRooms();
-        Player player = new Player(START_ROOM_ID);
+        Player player = new Player(START_ROOM_ID, initialMoney, Player.DEFAULT_STAMINA,
+                Player.DEFAULT_STAMINA, Player.DEFAULT_MAX_WEIGHT);
         return new GameSession(sessionId, player, rooms, GameStatus.IN_PROGRESS);
     }
 
