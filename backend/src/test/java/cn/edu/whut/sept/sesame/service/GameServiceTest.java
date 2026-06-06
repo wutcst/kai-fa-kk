@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import cn.edu.whut.sept.sesame.dto.GameState;
 import cn.edu.whut.sept.sesame.model.GameSession;
 import cn.edu.whut.sept.sesame.model.GameStatus;
+import cn.edu.whut.sept.sesame.model.Player;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -31,12 +32,12 @@ class GameServiceTest {
 
         GameState state = service.startGame();
 
-        assertEquals(GameService.DEFAULT_SESSION_ID, state.getSessionId());
+        assertFalse(state.getSessionId().isBlank());
         assertEquals(GameStatus.IN_PROGRESS, state.getStatus());
         assertEquals(GameService.START_ROOM_ID, state.getPlayer().getCurrentRoomId());
         assertEquals("秘窟入口", state.getCurrentRoom().getName());
-        assertEquals(100, state.getPlayer().getMoney());
-        assertEquals(30, state.getPlayer().getStamina());
+        assertEquals(Player.DEFAULT_MONEY, state.getPlayer().getMoney());
+        assertEquals(Player.DEFAULT_STAMINA, state.getPlayer().getStamina());
         assertFalse(state.getLogs().isEmpty());
     }
 
@@ -47,14 +48,16 @@ class GameServiceTest {
     void startGameCreatesMapRoomsExitsAndItems() {
         GameService service = new GameService();
 
-        service.startGame();
-        GameSession session = service.getCurrentSession();
+        GameState state = service.startGame();
+        GameSession session = service.getCurrentSession(state.getSessionId());
 
         assertEquals(6, session.getRooms().size());
         assertTrue(session.findRoom("stone-hall").orElseThrow().getExit("north").isPresent());
         assertTrue(session.findRoom("supply-room").orElseThrow().getItems().size() >= 2);
         assertTrue(session.findRoom("treasure-room").orElseThrow().isRequiresPassword());
         assertTrue(session.findRoom("final-exit").orElseThrow().isExit());
+        assertEquals("stone-hall", session.findRoom("final-exit").orElseThrow().getExit("north").orElseThrow());
+        assertEquals("treasure-room", session.findRoom("final-exit").orElseThrow().getExit("west").orElseThrow());
     }
 
     /**
@@ -64,9 +67,9 @@ class GameServiceTest {
     void getStateReturnsCurrentPlayerRoomItemsAndLogs() {
         GameService service = new GameService();
 
-        service.startGame();
-        service.getCurrentSession().getPlayer().moveTo("supply-room");
-        GameState state = service.getState();
+        GameState startedState = service.startGame();
+        service.getCurrentSession(startedState.getSessionId()).getPlayer().moveTo("supply-room");
+        GameState state = service.getState(startedState.getSessionId());
 
         assertEquals("supply-room", state.getCurrentRoom().getId());
         assertEquals("补给洞室", state.getCurrentRoom().getName());
@@ -82,6 +85,6 @@ class GameServiceTest {
     void getStateBeforeStartThrowsException() {
         GameService service = new GameService();
 
-        assertThrows(IllegalStateException.class, service::getState);
+        assertThrows(IllegalStateException.class, () -> service.getState("missing-session"));
     }
 }
