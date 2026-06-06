@@ -5,7 +5,7 @@
  * 如果想在不运行前端页面的情况下验证 Issue #7，可以启动后端后访问
  * {@code /api/game/start} 和 {@code /api/game/state} 接口查看 JSON 结果。
  *
- * GameController 当前只提供开始游戏和读取状态接口，移动、拾取、使用物品等操作会在后续
+ * GameController 当前提供开始游戏、读取状态和移动接口，拾取、使用物品等操作会在后续
  * Issue 中继续补充。
  *
  * @author 谢恺燊
@@ -61,6 +61,22 @@ public class GameController {
     public GameState getState(@RequestParam String sessionId) {
         try {
             return gameService.getState(sessionId);
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, exception.getMessage(), exception);
+        }
+    }
+
+    /**
+     * 按指定方向移动玩家。
+     *
+     * @param sessionId 会话编号
+     * @param direction 移动方向
+     * @return 移动后的游戏状态
+     */
+    @PostMapping("/move")
+    public GameState move(@RequestParam String sessionId, @RequestParam String direction) {
+        try {
+            return gameService.move(sessionId, direction);
         } catch (IllegalArgumentException | IllegalStateException exception) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, exception.getMessage(), exception);
         }
