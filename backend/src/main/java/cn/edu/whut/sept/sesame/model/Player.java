@@ -56,10 +56,32 @@ public class Player {
      * @param currentRoomId 当前房间编号
      */
     public Player(String currentRoomId) {
-        this.money = DEFAULT_MONEY;
-        this.stamina = DEFAULT_STAMINA;
-        this.maxStamina = DEFAULT_STAMINA;
-        this.maxWeight = DEFAULT_MAX_WEIGHT;
+        this(currentRoomId, DEFAULT_MONEY, DEFAULT_STAMINA, DEFAULT_STAMINA, DEFAULT_MAX_WEIGHT);
+    }
+
+    /**
+     * 创建一个使用指定初始数值的玩家。
+     *
+     * @param currentRoomId 当前房间编号
+     * @param money 初始金额
+     * @param stamina 初始体力
+     * @param maxStamina 最大体力
+     * @param maxWeight 最大负重
+     */
+    public Player(String currentRoomId, int money, int stamina, int maxStamina, int maxWeight) {
+        if (money < 0) {
+            throw new IllegalArgumentException("初始金额不能为负数");
+        }
+        if (stamina < 0 || maxStamina < 0 || stamina > maxStamina) {
+            throw new IllegalArgumentException("初始体力必须在 0 到最大体力之间");
+        }
+        if (maxWeight < 0) {
+            throw new IllegalArgumentException("最大负重不能为负数");
+        }
+        this.money = money;
+        this.stamina = stamina;
+        this.maxStamina = maxStamina;
+        this.maxWeight = maxWeight;
         this.currentRoomId = currentRoomId;
         this.inventory = new ArrayList<>();
     }
