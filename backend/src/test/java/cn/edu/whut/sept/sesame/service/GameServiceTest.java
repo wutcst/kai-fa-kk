@@ -36,9 +36,23 @@ class GameServiceTest {
         assertEquals(GameStatus.IN_PROGRESS, state.getStatus());
         assertEquals(GameService.START_ROOM_ID, state.getPlayer().getCurrentRoomId());
         assertEquals("秘窟入口", state.getCurrentRoom().getName());
-        assertEquals(Player.DEFAULT_MONEY, state.getPlayer().getMoney());
+        assertEquals(Player.DEFAULT_MONEY - GameService.TICKET_COST, state.getPlayer().getMoney());
         assertEquals(Player.DEFAULT_STAMINA, state.getPlayer().getStamina());
         assertFalse(state.getLogs().isEmpty());
+    }
+
+    /**
+     * 确认金额不足时无法开始探索。
+     */
+    @Test
+    void startGameFailsWhenMoneyIsNotEnoughForTicket() {
+        GameService service = new GameService();
+
+        GameState state = service.startGame("poor-player", GameService.TICKET_COST - 1);
+
+        assertEquals(GameStatus.FAILED, state.getStatus());
+        assertEquals(GameService.TICKET_COST - 1, state.getPlayer().getMoney());
+        assertEquals("金额不足，无法开始探索。", state.getMessage());
     }
 
     /**
@@ -76,6 +90,53 @@ class GameServiceTest {
         assertFalse(state.getCurrentRoom().getItems().isEmpty());
         assertEquals("supply-room", state.getPlayer().getCurrentRoomId());
         assertFalse(state.getLogs().isEmpty());
+    }
+
+    /**
+     * 确认合法移动会改变位置并扣除体力。
+     */
+    @Test
+    void moveChangesRoomAndConsumesStamina() {
+        GameService service = new GameService();
+        GameState startedState = service.startGame();
+
+        GameState movedState = service.move(startedState.getSessionId(), "east");
+
+        assertEquals("stone-hall", movedState.getPlayer().getCurrentRoomId());
+        assertEquals("石门大厅", movedState.getCurrentRoom().getName());
+        assertEquals(Player.DEFAULT_STAMINA - GameService.MOVE_STAMINA_COST, movedState.getPlayer().getStamina());
+    }
+
+    /**
+     * 确认非法方向不会改变位置和体力。
+     */
+    @Test
+    void moveWithInvalidDirectionDoesNotChangePlayerState() {
+        GameService service = new GameService();
+        GameState startedState = service.startGame();
+
+        GameState movedState = service.move(startedState.getSessionId(), "north");
+
+        assertEquals(GameService.START_ROOM_ID, movedState.getPlayer().getCurrentRoomId());
+        assertEquals(Player.DEFAULT_STAMINA, movedState.getPlayer().getStamina());
+        assertEquals("当前房间没有通向 north 的出口。", movedState.getMessage());
+    }
+
+    /**
+     * 确认体力不足时不能移动。
+     */
+    @Test
+    void moveFailsWhenStaminaIsNotEnough() {
+        GameService service = new GameService();
+        GameState startedState = service.startGame();
+        service.getCurrentSession(startedState.getSessionId()).getPlayer()
+                .decreaseStamina(Player.DEFAULT_STAMINA - 1);
+
+        GameState movedState = service.move(startedState.getSessionId(), "east");
+
+        assertEquals(GameService.START_ROOM_ID, movedState.getPlayer().getCurrentRoomId());
+        assertEquals(1, movedState.getPlayer().getStamina());
+        assertEquals("体力不足，无法移动。", movedState.getMessage());
     }
 
     /**
