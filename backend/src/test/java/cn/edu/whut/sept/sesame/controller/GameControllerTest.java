@@ -97,4 +97,106 @@ class GameControllerTest {
                 .andExpect(jsonPath("$.currentRoom.id").value("stone-hall"))
                 .andExpect(jsonPath("$.player.stamina").value(25));
     }
+
+    /**
+     * 确认返回接口可以返回上一个房间。
+     *
+     * @throws Exception MockMvc 请求异常
+     */
+    @Test
+    void backReturnsPreviousRoom() throws Exception {
+        MvcResult startResult = mockMvc.perform(post("/api/game/start"))
+                .andExpect(status().isOk())
+                .andReturn();
+        String responseBody = startResult.getResponse().getContentAsString(StandardCharsets.UTF_8);
+        String sessionId = JsonPath.read(responseBody, "$.sessionId");
+        mockMvc.perform(post("/api/game/move")
+                        .param("sessionId", sessionId)
+                        .param("direction", "east"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/game/back").param("sessionId", sessionId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.currentRoom.id").value("entrance"))
+                .andExpect(jsonPath("$.player.stamina").value(20));
+    }
+
+    /**
+     * 确认拾取接口可以把物品加入玩家背包。
+     *
+     * @throws Exception MockMvc 请求异常
+     */
+    @Test
+    void takeItemAddsItemToInventory() throws Exception {
+        MvcResult startResult = mockMvc.perform(post("/api/game/start"))
+                .andExpect(status().isOk())
+                .andReturn();
+        String responseBody = startResult.getResponse().getContentAsString(StandardCharsets.UTF_8);
+        String sessionId = JsonPath.read(responseBody, "$.sessionId");
+
+        mockMvc.perform(post("/api/game/take")
+                        .param("sessionId", sessionId)
+                        .param("itemId", "old-map"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.player.inventory[0].id").value("old-map"))
+                .andExpect(jsonPath("$.player.currentWeight").value(1));
+    }
+
+    /**
+     * 确认丢弃接口可以把背包物品放回当前房间。
+     *
+     * @throws Exception MockMvc 请求异常
+     */
+    @Test
+    void dropItemReturnsItemToCurrentRoom() throws Exception {
+        MvcResult startResult = mockMvc.perform(post("/api/game/start"))
+                .andExpect(status().isOk())
+                .andReturn();
+        String responseBody = startResult.getResponse().getContentAsString(StandardCharsets.UTF_8);
+        String sessionId = JsonPath.read(responseBody, "$.sessionId");
+        mockMvc.perform(post("/api/game/take")
+                        .param("sessionId", sessionId)
+                        .param("itemId", "old-map"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/game/drop")
+                        .param("sessionId", sessionId)
+                        .param("itemId", "old-map"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.player.inventory").isEmpty())
+                .andExpect(jsonPath("$.currentRoom.items[0].id").value("old-map"));
+    }
+
+    /**
+     * 确认使用接口可以应用补给效果。
+     *
+     * @throws Exception MockMvc 请求异常
+     */
+    @Test
+    void useItemAppliesSupplyEffect() throws Exception {
+        MvcResult startResult = mockMvc.perform(post("/api/game/start"))
+                .andExpect(status().isOk())
+                .andReturn();
+        String responseBody = startResult.getResponse().getContentAsString(StandardCharsets.UTF_8);
+        String sessionId = JsonPath.read(responseBody, "$.sessionId");
+        mockMvc.perform(post("/api/game/move")
+                        .param("sessionId", sessionId)
+                        .param("direction", "east"))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/game/move")
+                        .param("sessionId", sessionId)
+                        .param("direction", "north"))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/game/take")
+                        .param("sessionId", sessionId)
+                        .param("itemId", "clean-water"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/game/use")
+                        .param("sessionId", sessionId)
+                        .param("itemId", "clean-water"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.player.stamina").value(30))
+                .andExpect(jsonPath("$.player.inventory").isEmpty());
+    }
 }

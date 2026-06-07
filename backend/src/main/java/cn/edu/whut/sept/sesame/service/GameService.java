@@ -2,8 +2,8 @@
  * 该类是“芝麻开门”后端的游戏会话服务。
  * 游戏会话服务负责创建初始地图、初始化玩家，并向前端提供当前游戏状态。
  *
- * GameService 当前实现开始游戏、读取状态、移动、门票扣费和体力消耗规则。
- * 背包、物品使用、救援、暗语和通关规则会在后续 Issue 中继续基于当前会话模型扩展。
+ * GameService 当前实现开始游戏、读取状态、移动、返回、拾取、丢弃、使用物品、门票扣费和体力消耗规则。
+ * 救援、暗语、登录、SQLite 存档和通关规则会在后续 Issue 中继续基于当前会话模型扩展。
  *
  * @author 谢恺燊
  * @version 1.0
@@ -25,7 +25,7 @@ import java.util.concurrent.ConcurrentMap;
 import org.springframework.stereotype.Service;
 
 /**
- * 提供游戏开始和状态读取能力的业务服务。
+ * 提供游戏开始、状态读取、移动和物品操作能力的业务服务。
  */
 @Service
 public class GameService {
@@ -130,10 +130,157 @@ public class GameService {
         }
 
         player.decreaseStamina(MOVE_STAMINA_COST);
+        session.setPreviousRoomId(currentRoom.getId());
         player.moveTo(targetRoomId);
         Room targetRoom = session.getCurrentRoom();
         String message = "你向 " + normalizedDirection + " 移动，进入了" + targetRoom.getName() + "。";
         session.addLog(message + " 消耗体力 " + MOVE_STAMINA_COST + "。");
+        return GameState.from(session, message);
+    }
+
+    /**
+     * 返回玩家上一次所在房间，并返回返回后的游戏状态。
+     *
+     * @param sessionId 会话编号
+     * @return 返回后的游戏状态
+     */
+    public GameState back(String sessionId) {
+        GameSession session = requireSession(sessionId);
+        if (session.getStatus() != GameStatus.IN_PROGRESS) {
+            return GameState.from(session, "游戏已经结束，不能返回上一房间。");
+        }
+
+        String previousRoomId = session.getPreviousRoomId().orElse(null);
+        if (previousRoomId == null) {
+            String message = "当前还没有可以返回的上一个房间。";
+            session.addLog(message);
+            return GameState.from(session, message);
+        }
+
+        Player player = session.getPlayer();
+        if (player.getStamina() < MOVE_STAMINA_COST) {
+            String message = "体力不足，无法返回上一房间。";
+            session.addLog(message);
+            return GameState.from(session, message);
+        }
+
+        Room currentRoom = session.getCurrentRoom();
+        Room previousRoom = session.findRoom(previousRoomId)
+                .orElseThrow(() -> new IllegalStateException("上一个房间不存在：" + previousRoomId));
+        player.decreaseStamina(MOVE_STAMINA_COST);
+        session.setPreviousRoomId(currentRoom.getId());
+        player.moveTo(previousRoom.getId());
+        String message = "你返回了" + previousRoom.getName() + "。";
+        session.addLog(message + " 消耗体力 " + MOVE_STAMINA_COST + "。");
+        return GameState.from(session, message);
+    }
+
+    /**
+     * 从当前房间拾取指定物品，并返回拾取后的游戏状态。
+     *
+     * @param sessionId 会话编号
+     * @param itemId 物品编号
+     * @return 拾取后的游戏状态
+     */
+    public GameState takeItem(String sessionId, String itemId) {
+        GameSession session = requireSession(sessionId);
+        if (session.getStatus() != GameStatus.IN_PROGRESS) {
+            return GameState.from(session, "游戏已经结束，不能拾取物品。");
+        }
+
+        String normalizedItemId = requireText(itemId, "物品编号不能为空");
+        Room currentRoom = session.getCurrentRoom();
+        Item item = currentRoom.findItem(normalizedItemId).orElse(null);
+        if (item == null) {
+            String message = "当前房间没有该物品：" + normalizedItemId + "。";
+            session.addLog(message);
+            return GameState.from(session, message);
+        }
+
+        Player player = session.getPlayer();
+        if (!player.canCarry(item)) {
+            String message = "背包负重不足，无法拾取" + item.getName() + "。";
+            session.addLog(message);
+            return GameState.from(session, message);
+        }
+
+        Item removedItem = currentRoom.removeItem(normalizedItemId)
+                .orElseThrow(() -> new IllegalStateException("房间物品状态不一致：" + normalizedItemId));
+        player.addItem(removedItem);
+        String message = "你拾取了" + removedItem.getName() + "。";
+        session.addLog(message);
+        return GameState.from(session, message);
+    }
+
+    /**
+     * 从背包丢弃指定物品到当前房间，并返回丢弃后的游戏状态。
+     *
+     * @param sessionId 会话编号
+     * @param itemId 物品编号
+     * @return 丢弃后的游戏状态
+     */
+    public GameState dropItem(String sessionId, String itemId) {
+        GameSession session = requireSession(sessionId);
+        if (session.getStatus() != GameStatus.IN_PROGRESS) {
+            return GameState.from(session, "游戏已经结束，不能丢弃物品。");
+        }
+
+        String normalizedItemId = requireText(itemId, "物品编号不能为空");
+        Player player = session.getPlayer();
+        Item item = player.removeItem(normalizedItemId).orElse(null);
+        if (item == null) {
+            String message = "背包中没有该物品：" + normalizedItemId + "。";
+            session.addLog(message);
+            return GameState.from(session, message);
+        }
+
+        session.getCurrentRoom().addItem(item);
+        String message = "你丢弃了" + item.getName() + "。";
+        session.addLog(message);
+        return GameState.from(session, message);
+    }
+
+    /**
+     * 使用背包中的指定物品，并返回使用后的游戏状态。
+     *
+     * @param sessionId 会话编号
+     * @param itemId 物品编号
+     * @return 使用后的游戏状态
+     */
+    public GameState useItem(String sessionId, String itemId) {
+        GameSession session = requireSession(sessionId);
+        if (session.getStatus() != GameStatus.IN_PROGRESS) {
+            return GameState.from(session, "游戏已经结束，不能使用物品。");
+        }
+
+        String normalizedItemId = requireText(itemId, "物品编号不能为空");
+        Player player = session.getPlayer();
+        Item item = player.getInventory().stream()
+                .filter(candidate -> candidate.getId().equals(normalizedItemId))
+                .findFirst()
+                .orElse(null);
+        if (item == null) {
+            String message = "背包中没有该物品：" + normalizedItemId + "。";
+            session.addLog(message);
+            return GameState.from(session, message);
+        }
+
+        if (item.getType() != ItemType.SUPPLY && item.getType() != ItemType.EQUIPMENT) {
+            String message = item.getName() + "暂时不能直接使用。";
+            session.addLog(message);
+            return GameState.from(session, message);
+        }
+
+        player.removeItem(normalizedItemId);
+        if (item.getStaminaEffect() > 0) {
+            player.restoreStamina(item.getStaminaEffect());
+        }
+        if (item.getMaxWeightEffect() > 0) {
+            player.increaseMaxWeight(item.getMaxWeightEffect());
+        }
+
+        String message = buildUseItemMessage(item);
+        session.addLog(message);
         return GameState.from(session, message);
     }
 
@@ -216,6 +363,16 @@ public class GameService {
             default:
                 throw new IllegalArgumentException("未知方向：" + direction);
         }
+    }
+
+    private String buildUseItemMessage(Item item) {
+        if (item.getType() == ItemType.SUPPLY) {
+            return "你使用了" + item.getName() + "，恢复体力 " + item.getStaminaEffect() + "。";
+        }
+        if (item.getType() == ItemType.EQUIPMENT) {
+            return "你使用了" + item.getName() + "，最大负重增加 " + item.getMaxWeightEffect() + "。";
+        }
+        return "你使用了" + item.getName() + "。";
     }
 
     private String createSessionId() {
