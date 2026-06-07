@@ -2,7 +2,7 @@
  * 该类是“芝麻开门”后端的游戏会话模型。
  * 游戏会话用于保存一局游戏运行过程中的玩家、地图、日志和当前游戏状态。
  *
- * GameSession 类本身只负责保存和查询状态，不直接实现移动、拾取、使用物品等业务规则。
+ * GameSession 类本身只负责保存和查询状态，不直接实现移动、返回、拾取、使用物品等业务规则。
  * 后续服务层会基于该会话对象组合出完整游戏流程。
  *
  * @author 谢恺燊
@@ -27,6 +27,7 @@ public class GameSession {
     private final Player player;
     private final Map<String, Room> rooms;
     private final List<String> logs;
+    private String previousRoomId;
     private GameStatus status;
 
     /**
@@ -43,6 +44,7 @@ public class GameSession {
         this.rooms = new LinkedHashMap<>(Objects.requireNonNull(rooms, "房间地图不能为空"));
         this.status = Objects.requireNonNull(status, "游戏状态不能为空");
         this.logs = new ArrayList<>();
+        this.previousRoomId = null;
     }
 
     /**
@@ -90,6 +92,24 @@ public class GameSession {
     public Room getCurrentRoom() {
         String roomId = player.getCurrentRoomId();
         return findRoom(roomId).orElseThrow(() -> new IllegalStateException("当前房间不存在：" + roomId));
+    }
+
+    /**
+     * 获取玩家上一次所在房间编号。
+     *
+     * @return 上一次所在房间编号，如果尚未移动则为空
+     */
+    public Optional<String> getPreviousRoomId() {
+        return Optional.ofNullable(previousRoomId);
+    }
+
+    /**
+     * 记录玩家上一次所在房间编号。
+     *
+     * @param previousRoomId 上一次所在房间编号
+     */
+    public void setPreviousRoomId(String previousRoomId) {
+        this.previousRoomId = requireText(previousRoomId, "上一个房间编号不能为空");
     }
 
     /**
