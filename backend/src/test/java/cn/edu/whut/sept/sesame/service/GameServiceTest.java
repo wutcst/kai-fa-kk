@@ -140,6 +140,114 @@ class GameServiceTest {
     }
 
     /**
+     * 确认返回指令可以让玩家回到上一个房间并扣除体力。
+     */
+    @Test
+    void backReturnsPlayerToPreviousRoomAndConsumesStamina() {
+        GameService service = new GameService();
+        GameState startedState = service.startGame();
+        GameState movedState = service.move(startedState.getSessionId(), "east");
+
+        GameState backedState = service.back(movedState.getSessionId());
+
+        assertEquals(GameService.START_ROOM_ID, backedState.getPlayer().getCurrentRoomId());
+        assertEquals(Player.DEFAULT_STAMINA - GameService.MOVE_STAMINA_COST * 2,
+                backedState.getPlayer().getStamina());
+        assertEquals("你返回了秘窟入口。", backedState.getMessage());
+    }
+
+    /**
+     * 确认拾取物品会从房间移除物品并放入背包。
+     */
+    @Test
+    void takeItemMovesItemFromRoomToInventory() {
+        GameService service = new GameService();
+        GameState startedState = service.startGame();
+
+        GameState state = service.takeItem(startedState.getSessionId(), "old-map");
+
+        assertTrue(state.getPlayer().getInventory().stream()
+                .anyMatch(item -> item.getId().equals("old-map")));
+        assertTrue(state.getCurrentRoom().getItems().stream()
+                .noneMatch(item -> item.getId().equals("old-map")));
+        assertEquals(1, state.getPlayer().getCurrentWeight());
+    }
+
+    /**
+     * 确认背包负重不足时不能拾取物品。
+     */
+    @Test
+    void takeItemFailsWhenWeightLimitIsExceeded() {
+        GameService service = new GameService();
+        GameState startedState = service.startGame("weak-player", Player.DEFAULT_MONEY);
+        service.getCurrentSession(startedState.getSessionId()).getPlayer()
+                .addItem(new cn.edu.whut.sept.sesame.model.Item("stone", "石块", "用于压满背包的测试物品。",
+                        cn.edu.whut.sept.sesame.model.ItemType.KEY, Player.DEFAULT_MAX_WEIGHT, 0, 0, 0));
+
+        GameState state = service.takeItem(startedState.getSessionId(), "old-map");
+
+        assertEquals("背包负重不足，无法拾取残旧地图。", state.getMessage());
+        assertTrue(state.getCurrentRoom().getItems().stream()
+                .anyMatch(item -> item.getId().equals("old-map")));
+    }
+
+    /**
+     * 确认丢弃物品会从背包移除物品并放回当前房间。
+     */
+    @Test
+    void dropItemMovesItemFromInventoryToRoom() {
+        GameService service = new GameService();
+        GameState startedState = service.startGame();
+        service.takeItem(startedState.getSessionId(), "old-map");
+
+        GameState state = service.dropItem(startedState.getSessionId(), "old-map");
+
+        assertTrue(state.getPlayer().getInventory().isEmpty());
+        assertTrue(state.getCurrentRoom().getItems().stream()
+                .anyMatch(item -> item.getId().equals("old-map")));
+        assertEquals(0, state.getPlayer().getCurrentWeight());
+    }
+
+    /**
+     * 确认使用补给物品会恢复体力并消耗该物品。
+     */
+    @Test
+    void useSupplyRestoresStaminaAndRemovesItem() {
+        GameService service = new GameService();
+        GameState startedState = service.startGame();
+        GameState supplyRoomState = service.move(startedState.getSessionId(), "east");
+        supplyRoomState = service.move(supplyRoomState.getSessionId(), "north");
+        service.takeItem(supplyRoomState.getSessionId(), "clean-water");
+        service.getCurrentSession(supplyRoomState.getSessionId()).getPlayer().decreaseStamina(12);
+
+        GameState state = service.useItem(supplyRoomState.getSessionId(), "clean-water");
+
+        assertEquals(18, state.getPlayer().getStamina());
+        assertTrue(state.getPlayer().getInventory().stream()
+                .noneMatch(item -> item.getId().equals("clean-water")));
+        assertEquals("你使用了清水，恢复体力 10。", state.getMessage());
+    }
+
+    /**
+     * 确认使用装备物品会增加最大负重并消耗该物品。
+     */
+    @Test
+    void useEquipmentIncreasesMaxWeightAndRemovesItem() {
+        GameService service = new GameService();
+        GameState startedState = service.startGame();
+        GameState trapRoomState = service.move(startedState.getSessionId(), "east");
+        trapRoomState = service.move(trapRoomState.getSessionId(), "east");
+        service.takeItem(trapRoomState.getSessionId(), "rope");
+
+        GameState state = service.useItem(trapRoomState.getSessionId(), "rope");
+
+        assertEquals(Player.DEFAULT_MAX_WEIGHT + 5, state.getPlayer().getMaxWeight());
+        assertTrue(state.getPlayer().getInventory().stream()
+                .noneMatch(item -> item.getId().equals("rope")));
+        assertEquals("你使用了结实绳索，最大负重增加 5。", state.getMessage());
+    }
+
+    /**
      * 确认游戏尚未开始时不能直接读取状态。
      */
     @Test

@@ -5,8 +5,8 @@
  * 如果想在不运行前端页面的情况下验证 Issue #7，可以启动后端后访问
  * {@code /api/game/start} 和 {@code /api/game/state} 接口查看 JSON 结果。
  *
- * GameController 当前提供开始游戏、读取状态和移动接口，拾取、使用物品等操作会在后续
- * Issue 中继续补充。
+ * GameController 当前提供开始游戏、读取状态、移动、返回、拾取、丢弃和使用物品接口。
+ * 登录、存档、暗语、救援和通关等操作会在后续 Issue 中继续补充。
  *
  * @author 谢恺燊
  * @version 1.0
@@ -77,6 +77,69 @@ public class GameController {
     public GameState move(@RequestParam String sessionId, @RequestParam String direction) {
         try {
             return gameService.move(sessionId, direction);
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, exception.getMessage(), exception);
+        }
+    }
+
+    /**
+     * 返回玩家上一次所在房间。
+     *
+     * @param sessionId 会话编号
+     * @return 返回后的游戏状态
+     */
+    @PostMapping("/back")
+    public GameState back(@RequestParam String sessionId) {
+        try {
+            return gameService.back(sessionId);
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, exception.getMessage(), exception);
+        }
+    }
+
+    /**
+     * 拾取当前房间中的指定物品。
+     *
+     * @param sessionId 会话编号
+     * @param itemId 物品编号
+     * @return 拾取后的游戏状态
+     */
+    @PostMapping("/take")
+    public GameState takeItem(@RequestParam String sessionId, @RequestParam String itemId) {
+        try {
+            return gameService.takeItem(sessionId, itemId);
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, exception.getMessage(), exception);
+        }
+    }
+
+    /**
+     * 丢弃背包中的指定物品到当前房间。
+     *
+     * @param sessionId 会话编号
+     * @param itemId 物品编号
+     * @return 丢弃后的游戏状态
+     */
+    @PostMapping("/drop")
+    public GameState dropItem(@RequestParam String sessionId, @RequestParam String itemId) {
+        try {
+            return gameService.dropItem(sessionId, itemId);
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, exception.getMessage(), exception);
+        }
+    }
+
+    /**
+     * 使用背包中的指定物品。
+     *
+     * @param sessionId 会话编号
+     * @param itemId 物品编号
+     * @return 使用后的游戏状态
+     */
+    @PostMapping("/use")
+    public GameState useItem(@RequestParam String sessionId, @RequestParam String itemId) {
+        try {
+            return gameService.useItem(sessionId, itemId);
         } catch (IllegalArgumentException | IllegalStateException exception) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, exception.getMessage(), exception);
         }
