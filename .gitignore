@@ -14,6 +14,11 @@ dist/
 # Logs
 *.log
 
+# Local SQLite database
+data/
+*.db
+*.sqlite
+
 # OS
 .DS_Store
 Thumbs.db
