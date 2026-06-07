@@ -13,8 +13,10 @@ package cn.edu.whut.sept.sesame;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.TestPropertySource;
 
 @SpringBootTest
+@TestPropertySource(properties = "sesame.database.path=target/test-data/context-test.db")
 class SesameApplicationTests {
 
     /**

@@ -16,19 +16,26 @@ import cn.edu.whut.sept.sesame.dto.GameState;
 import cn.edu.whut.sept.sesame.model.GameSession;
 import cn.edu.whut.sept.sesame.model.GameStatus;
 import cn.edu.whut.sept.sesame.model.Player;
+import cn.edu.whut.sept.sesame.persistence.SqliteGameStore;
+import java.nio.file.Path;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * 测试 GameService 服务。
  */
 class GameServiceTest {
 
+    @TempDir
+    private Path tempDir;
+
     /**
      * 确认开始游戏后会创建玩家并进入初始房间。
      */
     @Test
     void startGameCreatesPlayerAtEntrance() {
-        GameService service = new GameService();
+        GameService service = createService();
 
         GameState state = service.startGame();
 
@@ -46,7 +53,7 @@ class GameServiceTest {
      */
     @Test
     void startGameFailsWhenMoneyIsNotEnoughForTicket() {
-        GameService service = new GameService();
+        GameService service = createService();
 
         GameState state = service.startGame("poor-player", GameService.TICKET_COST - 1);
 
@@ -60,18 +67,17 @@ class GameServiceTest {
      */
     @Test
     void startGameCreatesMapRoomsExitsAndItems() {
-        GameService service = new GameService();
+        GameService service = createService();
 
         GameState state = service.startGame();
         GameSession session = service.getCurrentSession(state.getSessionId());
 
-        assertEquals(6, session.getRooms().size());
-        assertTrue(session.findRoom("stone-hall").orElseThrow().getExit("north").isPresent());
-        assertTrue(session.findRoom("supply-room").orElseThrow().getItems().size() >= 2);
-        assertTrue(session.findRoom("treasure-room").orElseThrow().isRequiresPassword());
-        assertTrue(session.findRoom("final-exit").orElseThrow().isExit());
-        assertEquals("stone-hall", session.findRoom("final-exit").orElseThrow().getExit("north").orElseThrow());
-        assertEquals("treasure-room", session.findRoom("final-exit").orElseThrow().getExit("west").orElseThrow());
+        assertEquals(28, session.getRooms().size());
+        assertTrue(session.findRoom("stone-court").orElseThrow().getExit("east").isPresent());
+        assertTrue(session.findRoom("supply-alcove").orElseThrow().getItems().size() >= 2);
+        assertTrue(session.findRoom("moon-secret-room").isPresent());
+        assertTrue(session.findRoom("final-gate").orElseThrow().isExit());
+        assertEquals("mechanism-gallery", session.findRoom("final-gate").orElseThrow().getExit("west").orElseThrow());
     }
 
     /**
@@ -79,16 +85,16 @@ class GameServiceTest {
      */
     @Test
     void getStateReturnsCurrentPlayerRoomItemsAndLogs() {
-        GameService service = new GameService();
+        GameService service = createService();
 
         GameState startedState = service.startGame();
-        service.getCurrentSession(startedState.getSessionId()).getPlayer().moveTo("supply-room");
+        service.getCurrentSession(startedState.getSessionId()).getPlayer().moveTo("supply-alcove");
         GameState state = service.getState(startedState.getSessionId());
 
-        assertEquals("supply-room", state.getCurrentRoom().getId());
-        assertEquals("补给洞室", state.getCurrentRoom().getName());
+        assertEquals("supply-alcove", state.getCurrentRoom().getId());
+        assertEquals("补给壁龛", state.getCurrentRoom().getName());
         assertFalse(state.getCurrentRoom().getItems().isEmpty());
-        assertEquals("supply-room", state.getPlayer().getCurrentRoomId());
+        assertEquals("supply-alcove", state.getPlayer().getCurrentRoomId());
         assertFalse(state.getLogs().isEmpty());
     }
 
@@ -97,13 +103,13 @@ class GameServiceTest {
      */
     @Test
     void moveChangesRoomAndConsumesStamina() {
-        GameService service = new GameService();
+        GameService service = createService();
         GameState startedState = service.startGame();
 
         GameState movedState = service.move(startedState.getSessionId(), "east");
 
-        assertEquals("stone-hall", movedState.getPlayer().getCurrentRoomId());
-        assertEquals("石门大厅", movedState.getCurrentRoom().getName());
+        assertEquals("stone-court", movedState.getPlayer().getCurrentRoomId());
+        assertEquals("石门外庭", movedState.getCurrentRoom().getName());
         assertEquals(Player.DEFAULT_STAMINA - GameService.MOVE_STAMINA_COST, movedState.getPlayer().getStamina());
     }
 
@@ -112,7 +118,7 @@ class GameServiceTest {
      */
     @Test
     void moveWithInvalidDirectionDoesNotChangePlayerState() {
-        GameService service = new GameService();
+        GameService service = createService();
         GameState startedState = service.startGame();
 
         GameState movedState = service.move(startedState.getSessionId(), "north");
@@ -123,11 +129,11 @@ class GameServiceTest {
     }
 
     /**
-     * 确认体力不足时不能移动。
+     * 确认体力不足时会重新开始当前关。
      */
     @Test
-    void moveFailsWhenStaminaIsNotEnough() {
-        GameService service = new GameService();
+    void moveRestartsCurrentLevelWhenStaminaIsNotEnough() {
+        GameService service = createService();
         GameState startedState = service.startGame();
         service.getCurrentSession(startedState.getSessionId()).getPlayer()
                 .decreaseStamina(Player.DEFAULT_STAMINA - 1);
@@ -135,8 +141,9 @@ class GameServiceTest {
         GameState movedState = service.move(startedState.getSessionId(), "east");
 
         assertEquals(GameService.START_ROOM_ID, movedState.getPlayer().getCurrentRoomId());
-        assertEquals(1, movedState.getPlayer().getStamina());
-        assertEquals("体力不足，无法移动。", movedState.getMessage());
+        assertEquals(Player.DEFAULT_STAMINA, movedState.getPlayer().getStamina());
+        assertEquals(Player.DEFAULT_MONEY - GameService.TICKET_COST, movedState.getPlayer().getMoney());
+        assertEquals("体力不足，当前关重新开始。", movedState.getMessage());
     }
 
     /**
@@ -144,7 +151,7 @@ class GameServiceTest {
      */
     @Test
     void backReturnsPlayerToPreviousRoomAndConsumesStamina() {
-        GameService service = new GameService();
+        GameService service = createService();
         GameState startedState = service.startGame();
         GameState movedState = service.move(startedState.getSessionId(), "east");
 
@@ -161,7 +168,7 @@ class GameServiceTest {
      */
     @Test
     void takeItemMovesItemFromRoomToInventory() {
-        GameService service = new GameService();
+        GameService service = createService();
         GameState startedState = service.startGame();
 
         GameState state = service.takeItem(startedState.getSessionId(), "old-map");
@@ -178,7 +185,7 @@ class GameServiceTest {
      */
     @Test
     void takeItemFailsWhenWeightLimitIsExceeded() {
-        GameService service = new GameService();
+        GameService service = createService();
         GameState startedState = service.startGame("weak-player", Player.DEFAULT_MONEY);
         service.getCurrentSession(startedState.getSessionId()).getPlayer()
                 .addItem(new cn.edu.whut.sept.sesame.model.Item("stone", "石块", "用于压满背包的测试物品。",
@@ -196,7 +203,7 @@ class GameServiceTest {
      */
     @Test
     void dropItemMovesItemFromInventoryToRoom() {
-        GameService service = new GameService();
+        GameService service = createService();
         GameState startedState = service.startGame();
         service.takeItem(startedState.getSessionId(), "old-map");
 
@@ -213,10 +220,10 @@ class GameServiceTest {
      */
     @Test
     void useSupplyRestoresStaminaAndRemovesItem() {
-        GameService service = new GameService();
+        GameService service = createService();
         GameState startedState = service.startGame();
         GameState supplyRoomState = service.move(startedState.getSessionId(), "east");
-        supplyRoomState = service.move(supplyRoomState.getSessionId(), "north");
+        supplyRoomState = service.move(supplyRoomState.getSessionId(), "south");
         service.takeItem(supplyRoomState.getSessionId(), "clean-water");
         service.getCurrentSession(supplyRoomState.getSessionId()).getPlayer().decreaseStamina(12);
 
@@ -233,13 +240,14 @@ class GameServiceTest {
      */
     @Test
     void useEquipmentIncreasesMaxWeightAndRemovesItem() {
-        GameService service = new GameService();
+        GameService service = createService();
         GameState startedState = service.startGame();
-        GameState trapRoomState = service.move(startedState.getSessionId(), "east");
-        trapRoomState = service.move(trapRoomState.getSessionId(), "east");
-        service.takeItem(trapRoomState.getSessionId(), "rope");
+        service.getCurrentSession(startedState.getSessionId()).getPlayer()
+                .addItem(new cn.edu.whut.sept.sesame.model.Item("rope", "结实绳索",
+                        "粗麻编成的绳索，可以把更多物品牢牢捆在背包外侧。",
+                        cn.edu.whut.sept.sesame.model.ItemType.EQUIPMENT, 3, 0, 5, 0));
 
-        GameState state = service.useItem(trapRoomState.getSessionId(), "rope");
+        GameState state = service.useItem(startedState.getSessionId(), "rope");
 
         assertEquals(Player.DEFAULT_MAX_WEIGHT + 5, state.getPlayer().getMaxWeight());
         assertTrue(state.getPlayer().getInventory().stream()
@@ -248,12 +256,138 @@ class GameServiceTest {
     }
 
     /**
+     * 确认未输入正确暗语时不能进入最终石门。
+     */
+    @Test
+    void moveToPasswordRoomFailsBeforePasswordIsUnlocked() {
+        GameService service = createService();
+        GameState state = service.startGame();
+        service.getCurrentSession(state.getSessionId()).getPlayer().moveTo("mechanism-gallery");
+
+        GameState blockedState = service.move(state.getSessionId(), "east");
+
+        assertEquals("mechanism-gallery", blockedState.getPlayer().getCurrentRoomId());
+        assertEquals("最终石门需要正确暗语才能进入。", blockedState.getMessage());
+    }
+
+    /**
+     * 确认正确暗语可以解锁宝库和最终出口。
+     */
+    @Test
+    void submitPasswordUnlocksPasswordRooms() {
+        GameService service = createService();
+        GameState state = service.startGame();
+        service.getCurrentSession(state.getSessionId()).getPlayer().moveTo("mechanism-gallery");
+
+        GameState unlockedState = service.submitPassword(state.getSessionId(), GameService.CORRECT_PASSWORD);
+
+        assertTrue(unlockedState.isPasswordUnlocked());
+        assertEquals("暗语正确，最终石门的纹路亮了起来。", unlockedState.getMessage());
+    }
+
+    /**
+     * 确认不在机关长廊时不能输入暗语。
+     */
+    @Test
+    void submitPasswordFailsOutsideMechanismGallery() {
+        GameService service = createService();
+        GameState state = service.startGame();
+
+        GameState blockedState = service.submitPassword(state.getSessionId(), GameService.CORRECT_PASSWORD);
+
+        assertFalse(blockedState.isPasswordUnlocked());
+        assertEquals("这里没有可以输入暗语的机关。", blockedState.getMessage());
+    }
+
+    /**
+     * 确认带着宝物到达最终出口时可以通关。
+     */
+    @Test
+    void playerWinsWhenReachingExitWithTreasureAfterPasswordUnlocked() {
+        GameService service = createService();
+        GameState state = service.startGame();
+        service.getCurrentSession(state.getSessionId()).getPlayer().moveTo("mechanism-gallery");
+        service.submitPassword(state.getSessionId(), GameService.CORRECT_PASSWORD);
+        service.getCurrentSession(state.getSessionId()).getPlayer()
+                .addItem(new cn.edu.whut.sept.sesame.model.Item("gold-crown", "沉金王冠",
+                        "王冠沉重冰冷，内侧刻着早已失落的王名。",
+                        cn.edu.whut.sept.sesame.model.ItemType.TREASURE, 6, 0, 0, 180));
+
+        GameState wonState = service.move(state.getSessionId(), "east");
+
+        assertEquals(GameStatus.WON, wonState.getStatus());
+        assertEquals("final-gate", wonState.getPlayer().getCurrentRoomId());
+        assertTrue(wonState.getFinalScore() > 0);
+    }
+
+    /**
+     * 确认可以手动重新开始当前关。
+     */
+    @Test
+    void restartLevelRestoresCurrentLevelCheckpoint() {
+        GameService service = createService();
+        GameState state = service.startGame();
+        state = service.move(state.getSessionId(), "east");
+
+        GameState restartedState = service.restartLevel(state.getSessionId());
+
+        assertEquals(GameStatus.IN_PROGRESS, restartedState.getStatus());
+        assertEquals(GameService.START_ROOM_ID, restartedState.getPlayer().getCurrentRoomId());
+        assertEquals("当前关已重新开始。", restartedState.getMessage());
+    }
+
+    /**
+     * 确认账号可以注册、登录，并通过 SQLite 保存和读取游戏。
+     */
+    @Test
+    void registerLoginSaveAndLoadGameWithSqlite() {
+        SqliteGameStore store = new SqliteGameStore(tempDir.resolve("test-save.db"));
+        GameService service = new GameService(store);
+        assertTrue(service.register("kay", "123456").isSuccess());
+        String token = service.login("kay", "123456").getToken();
+        assertFalse(token.isBlank());
+        GameState state = service.startGameWithToken(token);
+        state = service.move(state.getSessionId(), "east");
+        service.getCurrentSession(state.getSessionId()).getPlayer().moveTo("mechanism-gallery");
+        service.submitPassword(state.getSessionId(), GameService.CORRECT_PASSWORD);
+        service.getCurrentSession(state.getSessionId()).getPlayer().moveTo("stone-court");
+        service.saveGame(token, state.getSessionId());
+
+        GameService reloadedService = new GameService(store);
+        String reloadedToken = reloadedService.login("kay", "123456").getToken();
+        GameState loadedState = reloadedService.loadGame(reloadedToken);
+
+        assertEquals("stone-court", loadedState.getPlayer().getCurrentRoomId());
+        assertTrue(loadedState.isPasswordUnlocked());
+    }
+
+    /**
+     * 确认玩家不能保存其他账号创建的游戏会话。
+     */
+    @Test
+    void saveGameRejectsOtherPlayersSession() {
+        GameService service = createService();
+        assertTrue(service.register("kay-a", "123456").isSuccess());
+        assertTrue(service.register("kay-b", "123456").isSuccess());
+        String tokenA = service.login("kay-a", "123456").getToken();
+        String tokenB = service.login("kay-b", "123456").getToken();
+        GameState state = service.startGameWithToken(tokenA);
+
+        assertThrows(IllegalStateException.class, () -> service.saveGame(tokenB, state.getSessionId()));
+    }
+
+    /**
      * 确认游戏尚未开始时不能直接读取状态。
      */
     @Test
     void getStateBeforeStartThrowsException() {
-        GameService service = new GameService();
+        GameService service = createService();
 
         assertThrows(IllegalStateException.class, () -> service.getState("missing-session"));
+    }
+
+    private GameService createService() {
+        Path databasePath = tempDir.resolve("service-test-" + UUID.randomUUID() + ".db");
+        return new GameService(new SqliteGameStore(databasePath));
     }
 }

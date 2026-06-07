@@ -14,10 +14,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jayway.jsonpath.JsonPath;
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -26,6 +28,7 @@ import org.springframework.test.web.servlet.MvcResult;
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@TestPropertySource(properties = "sesame.database.path=target/test-data/controller-test.db")
 class GameControllerTest {
 
     @Autowired
@@ -38,7 +41,7 @@ class GameControllerTest {
      */
     @Test
     void startGameReturnsInitialState() throws Exception {
-        mockMvc.perform(post("/api/game/start"))
+        mockMvc.perform(post("/api/game/start").param("token", registerAndLogin()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.sessionId").isNotEmpty())
                 .andExpect(jsonPath("$.status").value("IN_PROGRESS"))
@@ -53,9 +56,7 @@ class GameControllerTest {
      */
     @Test
     void getStateReturnsCurrentStateAfterStart() throws Exception {
-        MvcResult startResult = mockMvc.perform(post("/api/game/start"))
-                .andExpect(status().isOk())
-                .andReturn();
+        MvcResult startResult = startGameWithLogin();
         String responseBody = startResult.getResponse().getContentAsString(StandardCharsets.UTF_8);
         String sessionId = JsonPath.read(responseBody, "$.sessionId");
 
@@ -84,9 +85,7 @@ class GameControllerTest {
      */
     @Test
     void moveReturnsStateAfterPlayerMoves() throws Exception {
-        MvcResult startResult = mockMvc.perform(post("/api/game/start"))
-                .andExpect(status().isOk())
-                .andReturn();
+        MvcResult startResult = startGameWithLogin();
         String responseBody = startResult.getResponse().getContentAsString(StandardCharsets.UTF_8);
         String sessionId = JsonPath.read(responseBody, "$.sessionId");
 
@@ -94,7 +93,7 @@ class GameControllerTest {
                         .param("sessionId", sessionId)
                         .param("direction", "east"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.currentRoom.id").value("stone-hall"))
+                .andExpect(jsonPath("$.currentRoom.id").value("stone-court"))
                 .andExpect(jsonPath("$.player.stamina").value(25));
     }
 
@@ -105,9 +104,7 @@ class GameControllerTest {
      */
     @Test
     void backReturnsPreviousRoom() throws Exception {
-        MvcResult startResult = mockMvc.perform(post("/api/game/start"))
-                .andExpect(status().isOk())
-                .andReturn();
+        MvcResult startResult = startGameWithLogin();
         String responseBody = startResult.getResponse().getContentAsString(StandardCharsets.UTF_8);
         String sessionId = JsonPath.read(responseBody, "$.sessionId");
         mockMvc.perform(post("/api/game/move")
@@ -128,9 +125,7 @@ class GameControllerTest {
      */
     @Test
     void takeItemAddsItemToInventory() throws Exception {
-        MvcResult startResult = mockMvc.perform(post("/api/game/start"))
-                .andExpect(status().isOk())
-                .andReturn();
+        MvcResult startResult = startGameWithLogin();
         String responseBody = startResult.getResponse().getContentAsString(StandardCharsets.UTF_8);
         String sessionId = JsonPath.read(responseBody, "$.sessionId");
 
@@ -149,9 +144,7 @@ class GameControllerTest {
      */
     @Test
     void dropItemReturnsItemToCurrentRoom() throws Exception {
-        MvcResult startResult = mockMvc.perform(post("/api/game/start"))
-                .andExpect(status().isOk())
-                .andReturn();
+        MvcResult startResult = startGameWithLogin();
         String responseBody = startResult.getResponse().getContentAsString(StandardCharsets.UTF_8);
         String sessionId = JsonPath.read(responseBody, "$.sessionId");
         mockMvc.perform(post("/api/game/take")
@@ -174,9 +167,7 @@ class GameControllerTest {
      */
     @Test
     void useItemAppliesSupplyEffect() throws Exception {
-        MvcResult startResult = mockMvc.perform(post("/api/game/start"))
-                .andExpect(status().isOk())
-                .andReturn();
+        MvcResult startResult = startGameWithLogin();
         String responseBody = startResult.getResponse().getContentAsString(StandardCharsets.UTF_8);
         String sessionId = JsonPath.read(responseBody, "$.sessionId");
         mockMvc.perform(post("/api/game/move")
@@ -185,7 +176,7 @@ class GameControllerTest {
                 .andExpect(status().isOk());
         mockMvc.perform(post("/api/game/move")
                         .param("sessionId", sessionId)
-                        .param("direction", "north"))
+                        .param("direction", "south"))
                 .andExpect(status().isOk());
         mockMvc.perform(post("/api/game/take")
                         .param("sessionId", sessionId)
@@ -198,5 +189,105 @@ class GameControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.player.stamina").value(30))
                 .andExpect(jsonPath("$.player.inventory").isEmpty());
+    }
+
+    /**
+     * 确认账号注册和登录接口可以返回成功结果。
+     *
+     * @throws Exception MockMvc 请求异常
+     */
+    @Test
+    void authRegisterAndLoginReturnSuccess() throws Exception {
+        String username = "controller-user-" + UUID.randomUUID();
+
+        mockMvc.perform(post("/api/auth/register")
+                        .param("username", username)
+                        .param("password", "123456"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        mockMvc.perform(post("/api/auth/login")
+                        .param("username", username)
+                        .param("password", "123456"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.token").isNotEmpty());
+    }
+
+    /**
+     * 确认暗语接口可以解锁游戏状态。
+     *
+     * @throws Exception MockMvc 请求异常
+     */
+    @Test
+    void passwordApiRejectsPasswordOutsideMechanismGallery() throws Exception {
+        MvcResult startResult = startGameWithLogin();
+        String responseBody = startResult.getResponse().getContentAsString(StandardCharsets.UTF_8);
+        String sessionId = JsonPath.read(responseBody, "$.sessionId");
+
+        mockMvc.perform(post("/api/game/password")
+                        .param("sessionId", sessionId)
+                        .param("password", "芝麻开门"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.passwordUnlocked").value(false))
+                .andExpect(jsonPath("$.message").value("这里没有可以输入暗语的机关。"));
+    }
+
+    /**
+     * 确认保存和读取接口可以通过 SQLite 恢复游戏状态。
+     *
+     * @throws Exception MockMvc 请求异常
+     */
+    @Test
+    void saveAndLoadApiRestoresGameState() throws Exception {
+        String username = "save-user-" + UUID.randomUUID();
+        mockMvc.perform(post("/api/auth/register")
+                        .param("username", username)
+                        .param("password", "123456"))
+                .andExpect(status().isOk());
+        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                        .param("username", username)
+                        .param("password", "123456"))
+                .andExpect(status().isOk())
+                .andReturn();
+        String token = JsonPath.read(loginResult.getResponse().getContentAsString(StandardCharsets.UTF_8), "$.token");
+        MvcResult startResult = mockMvc.perform(post("/api/game/start").param("token", token))
+                .andExpect(status().isOk())
+                .andReturn();
+        String responseBody = startResult.getResponse().getContentAsString(StandardCharsets.UTF_8);
+        String sessionId = JsonPath.read(responseBody, "$.sessionId");
+        mockMvc.perform(post("/api/game/move")
+                        .param("sessionId", sessionId)
+                        .param("direction", "east"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/game/save")
+                        .param("token", token)
+                        .param("sessionId", sessionId))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/game/load").param("token", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.currentRoom.id").value("stone-court"));
+    }
+
+    private MvcResult startGameWithLogin() throws Exception {
+        return mockMvc.perform(post("/api/game/start").param("token", registerAndLogin()))
+                .andExpect(status().isOk())
+                .andReturn();
+    }
+
+    private String registerAndLogin() throws Exception {
+        String username = "controller-user-" + UUID.randomUUID();
+        mockMvc.perform(post("/api/auth/register")
+                        .param("username", username)
+                        .param("password", "123456"))
+                .andExpect(status().isOk());
+        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                        .param("username", username)
+                        .param("password", "123456"))
+                .andExpect(status().isOk())
+                .andReturn();
+        return JsonPath.read(loginResult.getResponse().getContentAsString(StandardCharsets.UTF_8), "$.token");
     }
 }
