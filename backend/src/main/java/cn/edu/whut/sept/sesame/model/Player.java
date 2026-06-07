@@ -176,6 +176,18 @@ public class Player {
     }
 
     /**
+     * 增加指定金额。
+     *
+     * @param amount 需要增加的金额
+     */
+    public void earn(int amount) {
+        if (amount < 0) {
+            throw new IllegalArgumentException("增加金额不能为负数");
+        }
+        money += amount;
+    }
+
+    /**
      * 扣除指定体力，体力最低降为 0。
      *
      * @param amount 需要扣除的体力
