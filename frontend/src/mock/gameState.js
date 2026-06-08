@@ -1,3 +1,52 @@
+export const statusLabels = {
+  IN_PROGRESS: '探索中',
+  SHOPPING: '商店整备',
+  WON: '已通关',
+  FAILED: '已失败',
+}
+
+export const mockSaves = [
+  {
+    saveId: 'save-001',
+    saveName: '月纹回廊前的整备',
+    currentLevel: 2,
+    currentRoomName: '月纹回廊',
+    currentRoomId: 'moon-corridor',
+    status: 'IN_PROGRESS',
+    money: 75,
+    stamina: 20,
+    currentWeight: 11,
+    maxWeight: 24,
+    updatedAt: '2026-06-08 10:30',
+  },
+  {
+    saveId: 'save-002',
+    saveName: '石门营地',
+    currentLevel: 1,
+    currentRoomName: '石门营地',
+    currentRoomId: 'stone-camp',
+    status: 'SHOPPING',
+    money: 112,
+    stamina: 30,
+    currentWeight: 7,
+    maxWeight: 20,
+    updatedAt: '2026-06-07 22:15',
+  },
+  {
+    saveId: 'save-003',
+    saveName: '机关长廊前',
+    currentLevel: 3,
+    currentRoomName: '王座前厅',
+    currentRoomId: 'throne-antechamber',
+    status: 'IN_PROGRESS',
+    money: 146,
+    stamina: 18,
+    currentWeight: 16,
+    maxWeight: 28,
+    updatedAt: '2026-06-06 21:40',
+  },
+]
+
 export const mockGameState = {
   title: '芝麻开门',
   chapter: '第一章：石门回声',
