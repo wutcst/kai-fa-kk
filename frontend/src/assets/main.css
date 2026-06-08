@@ -1295,3 +1295,450 @@ button {
     min-height: 430px;
   }
 }
+
+.start-menu {
+  position: relative;
+  display: grid;
+  height: 100vh;
+  padding: clamp(28px, 5vw, 58px);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 72% 30%, rgba(55, 185, 236, 0.16), transparent 24%),
+    linear-gradient(90deg, rgba(3, 6, 11, 0.68), rgba(3, 6, 11, 0.08) 46%, rgba(3, 6, 11, 0.2)),
+    url("./images/backgrounds/start-menu-bg.png") center / cover fixed,
+    linear-gradient(145deg, #05070c, #101a28);
+}
+
+.start-menu::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background:
+    radial-gradient(circle at 21% 77%, rgba(237, 127, 45, 0.12), transparent 20%),
+    radial-gradient(circle at 52% 48%, rgba(7, 16, 27, 0.04), transparent 26%),
+    linear-gradient(180deg, rgba(3, 5, 9, 0.06), rgba(3, 5, 9, 0.36));
+  pointer-events: none;
+}
+
+.start-menu::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.44), transparent 20%, transparent 78%, rgba(0, 0, 0, 0.34)),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.26), transparent 30%, rgba(0, 0, 0, 0.36));
+  pointer-events: none;
+}
+
+.start-menu__stage {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: min(1180px, 100%);
+  height: calc(100vh - clamp(56px, 10vw, 116px));
+  place-items: center;
+  margin: 0 auto;
+}
+
+.start-menu__panel,
+.save-list-panel {
+  border: 1px solid rgba(224, 177, 96, 0.3);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 24% 0%, rgba(76, 202, 237, 0.11), transparent 28%),
+    linear-gradient(180deg, rgba(13, 18, 27, 0.74), rgba(7, 9, 14, 0.84));
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.46),
+    0 0 34px rgba(49, 155, 192, 0.1),
+    inset 0 1px 0 rgba(255, 230, 158, 0.12);
+  backdrop-filter: blur(3px);
+}
+
+.start-menu__panel {
+  width: min(430px, 100%);
+  padding: clamp(24px, 3.4vw, 34px);
+  text-align: center;
+}
+
+.start-menu__eyebrow,
+.save-list-panel__header span,
+.recent-save-card span {
+  color: #8deeff;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+}
+
+.start-menu h1 {
+  margin: 10px 0 0;
+  color: #f3cc75;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  font-size: clamp(2.2rem, 5vw, 3.05rem);
+  line-height: 1.02;
+  text-shadow:
+    0 0 24px rgba(76, 202, 237, 0.2),
+    0 5px 0 rgba(0, 0, 0, 0.36);
+}
+
+.start-menu__panel > p,
+.save-list-panel__header p,
+.save-card p,
+.save-empty p,
+.recent-save-card p {
+  color: #e8d0ac;
+  line-height: 1.72;
+}
+
+.start-menu__panel > p {
+  margin-bottom: 0;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(214, 169, 94, 0.18);
+}
+
+.start-menu__buttons {
+  display: grid;
+  gap: 11px;
+  margin-top: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(101, 189, 213, 0.14);
+}
+
+.start-menu-button,
+.save-card button,
+.save-empty button,
+.save-list-panel__close {
+  border: 1px solid rgba(128, 76, 29, 0.68);
+  border-radius: 8px;
+  color: #f3d78f;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  font-weight: 900;
+  cursor: pointer;
+  background:
+    radial-gradient(circle at 28% 18%, rgba(255, 224, 148, 0.22), transparent 32%),
+    linear-gradient(135deg, #4d2b12 0%, #7c4b1d 52%, #2c1609 100%);
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 233, 160, 0.28);
+  transition:
+    transform 0.18s ease,
+    filter 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.start-menu-button {
+  min-height: 48px;
+  padding: 12px 20px;
+}
+
+.start-menu-button:hover,
+.save-card button:hover,
+.save-empty button:hover,
+.save-list-panel__close:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.08);
+}
+
+.start-menu-button--primary {
+  color: #fff1bd;
+  background:
+    radial-gradient(circle at 28% 18%, rgba(135, 235, 255, 0.38), transparent 30%),
+    linear-gradient(135deg, #1c6375 0%, #754719 52%, #c38a35 100%);
+  box-shadow:
+    0 0 22px rgba(56, 190, 219, 0.18),
+    0 10px 24px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(229, 248, 243, 0.34);
+}
+
+.start-menu-button--secondary {
+  color: #f4d897;
+  background:
+    radial-gradient(circle at 28% 18%, rgba(255, 224, 148, 0.18), transparent 32%),
+    linear-gradient(135deg, #533116 0%, #8b5926 52%, #261308 100%);
+}
+
+.start-menu-button--continue {
+  color: #f7dda3;
+  background:
+    radial-gradient(circle at 28% 18%, rgba(255, 231, 166, 0.24), transparent 32%),
+    linear-gradient(135deg, #4d2b12 0%, #8c5d2a 52%, #281508 100%);
+}
+
+.start-menu-button--archive {
+  color: #d5b279;
+  border-color: rgba(164, 111, 48, 0.5);
+  background:
+    linear-gradient(135deg, rgba(49, 29, 13, 0.5), rgba(14, 18, 25, 0.64));
+}
+
+.start-menu-button--ghost {
+  color: #cda46c;
+  border-color: rgba(128, 76, 29, 0.34);
+  background:
+    linear-gradient(135deg, rgba(48, 28, 13, 0.28), rgba(18, 11, 8, 0.44));
+}
+
+.recent-save-card {
+  margin-top: 18px;
+  padding: 14px 15px;
+  border: 1px solid rgba(163, 111, 48, 0.3);
+  border-radius: 10px;
+  text-align: left;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(255, 232, 162, 0.12), transparent 28%),
+    linear-gradient(135deg, rgba(66, 38, 15, 0.24), rgba(8, 15, 24, 0.5));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 238, 180, 0.1),
+    0 8px 18px rgba(0, 0, 0, 0.18);
+}
+
+.recent-save-card__title-row,
+.save-card__topline,
+.save-list-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.recent-save-card h2 {
+  margin: 7px 0 0;
+  color: #f3d490;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  font-size: 0.98rem;
+}
+
+.recent-save-card strong {
+  flex: 0 0 auto;
+  margin-top: 5px;
+  color: #07121a;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  background: linear-gradient(135deg, #81e8ff, #d8f2ff);
+}
+
+.recent-save-card__summary {
+  margin-bottom: 4px;
+  color: #bfa985;
+  font-size: 0.84rem;
+}
+
+.recent-save-card time {
+  color: #ae9a78;
+  font-size: 0.82rem;
+}
+
+.start-menu-modal {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: clamp(18px, 4vw, 40px);
+  background:
+    radial-gradient(circle at 50% 42%, rgba(61, 187, 222, 0.14), transparent 24%),
+    rgba(1, 4, 8, 0.54);
+  backdrop-filter: blur(2px);
+  overflow: hidden;
+}
+
+.save-list-panel {
+  width: min(860px, calc(100vw - 48px));
+  max-height: min(82vh, 760px);
+  padding: clamp(24px, 4vw, 32px);
+  overflow: hidden;
+}
+
+.save-list-panel__header {
+  margin-bottom: 22px;
+}
+
+.save-list-panel__header h2 {
+  margin: 8px 0 0;
+  color: #f2c979;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  font-size: clamp(1.8rem, 4vw, 2.55rem);
+}
+
+.save-list-panel__header p {
+  margin-bottom: 0;
+}
+
+.save-list-panel__close {
+  display: inline-grid;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  padding: 0;
+  color: #f3d78f;
+  font-size: 1.2rem;
+  border-radius: 10px;
+  background:
+    radial-gradient(circle at 35% 20%, rgba(255, 224, 148, 0.26), transparent 35%),
+    linear-gradient(135deg, #5a3518, #241207);
+}
+
+.save-list {
+  display: grid;
+  gap: 12px;
+  max-height: min(52vh, 430px);
+  padding-right: 8px;
+  overflow-y: auto;
+  scrollbar-color: rgba(196, 139, 61, 0.78) rgba(33, 21, 13, 0.62);
+  scrollbar-width: thin;
+}
+
+.save-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.save-list::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(33, 21, 13, 0.62);
+}
+
+.save-list::-webkit-scrollbar-thumb {
+  border: 1px solid rgba(255, 219, 139, 0.22);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(216, 164, 79, 0.92), rgba(98, 58, 23, 0.92));
+}
+
+.save-card,
+.save-empty {
+  border: 1px solid rgba(129, 82, 32, 0.36);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 12% 12%, rgba(255, 237, 178, 0.22), transparent 24%),
+    linear-gradient(135deg, rgba(228, 190, 112, 0.18), rgba(12, 19, 29, 0.64));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 238, 180, 0.14),
+    0 10px 22px rgba(0, 0, 0, 0.18);
+}
+
+.save-card {
+  padding: 15px 16px 14px;
+}
+
+.save-status {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: #07121a;
+  font-size: 0.76rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, #81e8ff, #d8f2ff);
+}
+
+.save-status--shopping {
+  background: linear-gradient(135deg, #f7cf75, #fff0b0);
+}
+
+.save-status--won {
+  background: linear-gradient(135deg, #fff0a0, #f0b84c);
+}
+
+.save-status--failed {
+  color: #ffe7d0;
+  background: linear-gradient(135deg, #8e321f, #d26a3a);
+}
+
+.save-card h3 {
+  margin: 0;
+  color: #f3d490;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  font-size: 1rem;
+}
+
+.save-card__route {
+  margin: 8px 0 0;
+  color: #e8d0ac;
+  font-size: 0.92rem;
+}
+
+.save-card__summary {
+  margin: 6px 0 0;
+  color: #bfa985;
+  font-size: 0.86rem;
+}
+
+.save-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 11px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(214, 169, 94, 0.16);
+}
+
+.save-card__footer time {
+  color: #ae9a78;
+  font-size: 0.82rem;
+}
+
+.save-card button,
+.save-empty button {
+  min-height: 40px;
+  padding: 8px 14px;
+}
+
+.save-empty {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 34px;
+  text-align: center;
+}
+
+.save-empty span {
+  color: #f2c979;
+  font-size: 1.2rem;
+  font-weight: 900;
+}
+
+@media (max-width: 760px) {
+  .start-menu {
+    padding: 22px 16px;
+    background-position: center;
+  }
+
+  .start-menu__stage {
+    height: calc(100vh - 44px);
+    overflow-y: auto;
+  }
+
+  .start-menu__panel,
+  .save-list-panel {
+    padding: 24px;
+  }
+
+  .recent-save-card__title-row,
+  .save-card__topline,
+  .save-list-panel__header,
+  .save-card__footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .save-list-panel__close {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+  }
+
+  .save-list-panel {
+    position: relative;
+    width: min(100%, calc(100vw - 32px));
+    max-height: 86vh;
+  }
+
+  .save-list {
+    max-height: 56vh;
+  }
+
+  .save-card button {
+    width: 100%;
+  }
+}
