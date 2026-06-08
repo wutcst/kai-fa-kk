@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { mockGameState } from '../mock/gameState'
+import { mockGameState, mockSaves, statusLabels } from '../mock/gameState'
 
 describe('HomeView', () => {
   it('uses the auth and game dashboard containers', () => {
@@ -14,9 +14,11 @@ describe('HomeView', () => {
     )
 
     expect(source).toContain('AuthView')
+    expect(source).toContain('StartMenu')
     expect(source).toContain('GameDashboard')
-    expect(source).toContain('isAuthenticated')
-    expect(source).toContain('enterGame')
+    expect(source).toContain('currentView')
+    expect(source).toContain('start-menu')
+    expect(source).toContain('enterStartMenu')
     expect(authSource).toContain('viewMode')
     expect(authSource).toContain('authMode')
     expect(authSource).toContain('landing')
@@ -57,11 +59,21 @@ describe('HomeView', () => {
     expect(mockGameState.logs).toHaveLength(4)
     expect(mockGameState.actions.directionActions).toHaveLength(4)
     expect(mockGameState.actions.itemActions).toHaveLength(4)
+    expect(mockSaves).toHaveLength(3)
+    expect(mockSaves[0]).toMatchObject({
+      saveName: '月纹回廊前的整备',
+      currentLevel: 2,
+      currentWeight: 11,
+      maxWeight: 24,
+    })
+    expect(statusLabels.SHOPPING).toBe('商店整备')
   })
 
   it('keeps key dashboard labels in component sources', () => {
     const componentSources = [
       '../components/AuthView.vue',
+      '../components/StartMenu.vue',
+      '../components/SaveListPanel.vue',
       '../components/GameDashboard.vue',
       '../components/GameHeader.vue',
       '../components/GameScene.vue',
@@ -81,6 +93,9 @@ describe('HomeView', () => {
     expect(componentSources).toContain('登录 / 注册')
     expect(componentSources).toContain('游戏介绍')
     expect(componentSources).toContain('返回入口')
+    expect(componentSources).toContain('探险入口')
+    expect(componentSources).toContain('读取存档')
+    expect(componentSources).toContain('退出登录')
     expect(mockGameState.authIntro.sections[1].title).toBe('探索目标')
     expect(mockGameState.authIntro.sections[2].title).toBe('行动规则')
     expect(componentSources).toContain('芝麻开门')
