@@ -43,7 +43,9 @@ const closeArchive = () => {
     <div class="start-menu__stage">
       <section class="start-menu__panel">
         <span class="start-menu__eyebrow">登录成功</span>
-        <h1 id="start-menu-title">探险入口</h1>
+        <h1 id="start-menu-title">
+          探险入口
+        </h1>
         <p>欢迎回来，{{ username }}。开启新的探险，或沿着旧日卷宗继续前行。</p>
 
         <div class="start-menu__buttons">

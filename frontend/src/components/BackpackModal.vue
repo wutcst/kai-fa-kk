@@ -145,8 +145,12 @@ const filteredItems = computed(() => {
           </div>
 
           <div class="inventory-item-card__actions">
-            <button type="button">使用</button>
-            <button type="button">丢弃</button>
+            <button type="button">
+              使用
+            </button>
+            <button type="button">
+              丢弃
+            </button>
           </div>
         </article>
       </div>

@@ -21,7 +21,9 @@ defineEmits(['close', 'start-new'])
     <div class="save-list-panel__header">
       <div>
         <span>旧日卷宗</span>
-        <h2 id="save-list-title">历史存档</h2>
+        <h2 id="save-list-title">
+          历史存档
+        </h2>
         <p>选择一段旧日卷宗继续前行。当前仅展示 mock 存档，后续将在 Issue #12 接入真实存档接口。</p>
       </div>
       <button
