@@ -1,6 +1,7 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import sesameLogo from '../assets/images/logo/sesame-logo.png'
+import { getPageBackground } from '../utils/assetMap'
 
 defineProps({
   intro: {
@@ -13,6 +14,11 @@ defineEmits(['enter-game'])
 
 const viewMode = ref('landing')
 const authMode = ref('login')
+const authBackground = computed(() => {
+  if (viewMode.value === 'intro') return getPageBackground('intro')
+  if (viewMode.value === 'auth') return getPageBackground('auth')
+  return getPageBackground('home')
+})
 
 const openAuth = (mode = 'login') => {
   authMode.value = mode
@@ -33,6 +39,7 @@ const backToLanding = () => {
   <section
     class="auth-view"
     :class="`auth-view--${viewMode}`"
+    :style="{ '--auth-background': `url(${authBackground})` }"
     aria-label="芝麻开门入口页"
   >
     <section

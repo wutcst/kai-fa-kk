@@ -1,5 +1,5 @@
 <script setup>
-import { statusLabels } from '../mock/gameState'
+import SaveCard from './SaveCard.vue'
 
 defineProps({
   saves: {
@@ -38,39 +38,14 @@ defineEmits(['close', 'start-new'])
       v-if="saves.length"
       class="save-list"
     >
-      <article
+      <SaveCard
         v-for="save in saves"
         :key="save.saveId"
-        class="save-card"
-      >
-        <div class="save-card__topline">
-          <h3>{{ save.saveName }}</h3>
-          <span
-            class="save-status"
-            :class="`save-status--${save.status.toLowerCase().replace('_', '-')}`"
-          >
-            {{ statusLabels[save.status] || save.status }}
-          </span>
-        </div>
-
-        <p class="save-card__route">
-          第 {{ save.currentLevel }} 关 · {{ save.currentRoomName }}
-        </p>
-
-        <p class="save-card__summary">
-          金币 {{ save.money }} · 体力 {{ save.stamina }} · 负重 {{ save.currentWeight }} / {{ save.maxWeight }}
-        </p>
-
-        <div class="save-card__footer">
-          <time>{{ save.updatedAt }}</time>
-          <button
-            type="button"
-            @click="$emit('start-new')"
-          >
-            读取存档
-          </button>
-        </div>
-      </article>
+        :save="save"
+        action-label="读取存档"
+        show-action
+        @load="$emit('start-new')"
+      />
     </div>
 
     <div

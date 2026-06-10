@@ -1,7 +1,8 @@
 <script setup>
 import { computed, ref } from 'vue'
+import { getPageBackground } from '../utils/assetMap'
+import SaveCard from './SaveCard.vue'
 import SaveListPanel from './SaveListPanel.vue'
-import { statusLabels } from '../mock/gameState'
 
 const props = defineProps({
   saves: {
@@ -19,6 +20,10 @@ defineEmits(['logout', 'start-new'])
 const isArchiveOpen = ref(false)
 
 const latestSave = computed(() => props.saves[0] || null)
+const startMenuBackground = computed(() => getPageBackground('start-menu'))
+const startMenuStyle = computed(() => ({
+  '--start-menu-background': `url(${startMenuBackground.value})`,
+}))
 
 const openArchive = () => {
   isArchiveOpen.value = true
@@ -32,6 +37,7 @@ const closeArchive = () => {
 <template>
   <section
     class="start-menu"
+    :style="startMenuStyle"
     aria-labelledby="start-menu-title"
   >
     <div class="start-menu__stage">
@@ -72,22 +78,13 @@ const closeArchive = () => {
           </button>
         </div>
 
-        <article
+        <SaveCard
           v-if="latestSave"
-          class="recent-save-card"
-        >
-          <span>最近卷宗</span>
-          <div class="recent-save-card__title-row">
-            <h2>{{ latestSave.saveName }}</h2>
-            <strong>{{ statusLabels[latestSave.status] || latestSave.status }}</strong>
-          </div>
-          <p>第 {{ latestSave.currentLevel }} 关 · {{ latestSave.currentRoomName }}</p>
-          <p class="recent-save-card__summary">
-            金币 {{ latestSave.money }} · 体力 {{ latestSave.stamina }} · 负重
-            {{ latestSave.currentWeight }} / {{ latestSave.maxWeight }}
-          </p>
-          <time>{{ latestSave.updatedAt }}</time>
-        </article>
+          class="start-menu__recent-save"
+          :save="latestSave"
+          label="最近卷宗"
+          variant="recent"
+        />
       </section>
     </div>
 
