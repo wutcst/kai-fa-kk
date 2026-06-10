@@ -1,6 +1,5 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import dashboardReference from '../../docs/reference/game-dashboard-reference.png'
 import { DASHBOARD_BASE, HUD_POSITIONS, rectStyle } from '../constants/dashboardLayout'
 import { getRoomBackground } from '../utils/assetMap'
 import ActionPanel from './ActionPanel.vue'
