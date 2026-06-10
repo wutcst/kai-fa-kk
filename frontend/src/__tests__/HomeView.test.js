@@ -49,13 +49,13 @@ describe('HomeView', () => {
       gold: 90,
       stamina: 25,
       maxStamina: 30,
-      currentWeight: 8,
+      currentWeight: 9,
       maxWeight: 20,
       location: '石门大厅',
     })
     expect(mockGameState.room.exits).toHaveLength(3)
-    expect(mockGameState.room.visibleItems).toHaveLength(3)
-    expect(mockGameState.inventory).toHaveLength(3)
+    expect(mockGameState.room.visibleItems).toHaveLength(7)
+    expect(mockGameState.inventory).toHaveLength(4)
     expect(mockGameState.logs).toHaveLength(4)
     expect(mockGameState.actions.directionActions).toHaveLength(4)
     expect(mockGameState.actions.itemActions).toHaveLength(4)
