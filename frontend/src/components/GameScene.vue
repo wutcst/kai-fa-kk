@@ -49,9 +49,8 @@ const getDetailPlacement = (index) => (index % 4 >= 2 ? 'left' : 'right')
     @click="clearSelectedRoomItem"
   >
     <div
-      v-if="sceneItems.length"
+      v-if="roomItemsHighlighted && sceneItems.length"
       class="room-items-grid"
-      :class="{ 'room-items-grid--muted': !roomItemsHighlighted }"
     >
       <div
         v-for="(item, index) in sceneItems"
@@ -122,7 +121,7 @@ const getDetailPlacement = (index) => (index % 4 >= 2 ? 'left' : 'right')
     </div>
 
     <div
-      v-else
+      v-else-if="roomItemsHighlighted"
       class="room-items-empty"
     >
       当前房间没有可拾取物品。
