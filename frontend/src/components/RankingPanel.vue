@@ -36,8 +36,7 @@ const RANKING_SLOTS = {
   score2: { x: 210, y: 150, w: 58, h: 46 },
   score3: { x: 210, y: 208, w: 58, h: 46 },
 
-  fallbackTitle: { x: 0, y: 76, w: 360, h: 26 },
-  fallbackText: { x: 48, y: 110, w: 264, h: 88 },
+  state: { x: 76, y: 94, w: 208, h: 46 },
 }
 
 const slotStyle = (slot) => ({
@@ -49,10 +48,11 @@ const slotStyle = (slot) => ({
 
 const rankingFrame = computed(() => getUiAsset('rankingPanelFrame'))
 const hasRankingData = computed(() => props.ranking.length > 0)
-const fallbackText = computed(() => {
-  if (props.loading) return '排行榜加载中...'
-  if (props.errorMessage) return '排行榜暂时无法加载'
-  return '暂无排行榜数据'
+const panelState = computed(() => {
+  if (props.loading) return 'loading'
+  if (props.errorMessage) return 'error'
+  if (!hasRankingData.value) return 'empty'
+  return 'success'
 })
 const visibleRanking = computed(() => props.ranking.slice(0, 3).map((entry, index) => ({
   rank: entry.rank ?? index + 1,
@@ -78,15 +78,15 @@ const visibleRanking = computed(() => props.ranking.slice(0, 3).map((entry, inde
       aria-hidden="true"
     >
 
-    <template v-if="hasRankingData">
-      <div
-        id="ranking-panel-title"
-        class="ranking-panel-template__title"
-        :style="slotStyle(RANKING_SLOTS.title)"
-      >
-        探险排行
-      </div>
+    <div
+      id="ranking-panel-title"
+      class="ranking-panel-template__title"
+      :style="slotStyle(RANKING_SLOTS.title)"
+    >
+      探险排行
+    </div>
 
+    <template v-if="panelState === 'success'">
       <template
         v-for="entry in visibleRanking"
         :key="entry.rank"
@@ -123,20 +123,21 @@ const visibleRanking = computed(() => props.ranking.slice(0, 3).map((entry, inde
       </template>
     </template>
 
-    <template v-else>
-      <div
-        id="ranking-panel-title"
-        class="ranking-panel-template__title"
-        :style="slotStyle(RANKING_SLOTS.fallbackTitle)"
-      >
-        探险排行
-      </div>
-      <p
-        class="ranking-panel-template__fallback-text"
-        :style="slotStyle(RANKING_SLOTS.fallbackText)"
-      >
-        {{ fallbackText }}
-      </p>
-    </template>
+    <div
+      v-else
+      class="ranking-panel__state"
+      :class="`ranking-panel__${panelState}`"
+      :style="slotStyle(RANKING_SLOTS.state)"
+    >
+      <span v-if="panelState === 'loading'">
+        排行榜加载中...
+      </span>
+      <span v-else-if="panelState === 'error'">
+        排行榜暂时无法加载
+      </span>
+      <span v-else>
+        暂无排行榜数据
+      </span>
+    </div>
   </section>
 </template>
