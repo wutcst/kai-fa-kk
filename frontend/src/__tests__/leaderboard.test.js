@@ -37,8 +37,29 @@ describe('leaderboard integration', () => {
     expect(rankingSource).toContain('排行榜加载中...')
     expect(rankingSource).toContain('排行榜暂时无法加载')
     expect(rankingSource).toContain('暂无排行榜数据')
+    expect(rankingSource).toContain("panelState === 'success'")
+    expect(rankingSource).toContain("panelState === 'loading'")
+    expect(rankingSource).toContain("panelState === 'error'")
+    expect(rankingSource).toContain('ranking-panel__state')
+    expect(rankingSource).not.toContain('ranking-panel-template__fallback-text')
+    expect(rankingSource).toContain('state: { x: 76, y: 94, w: 208, h: 46 }')
     expect(rankingSource).toContain('entry.username')
     expect(rankingSource).toContain('entry.score')
+  })
+
+  it('only renders ranking rows in the success branch', () => {
+    const rankingSource = readFileSync(
+      new URL('../components/RankingPanel.vue', import.meta.url),
+      'utf-8',
+    )
+
+    const successBranch = rankingSource.indexOf('<template v-if="panelState === \'success\'">')
+    const rankingRow = rankingSource.indexOf('class="ranking-panel-template__row"')
+    const stateBranch = rankingSource.indexOf('class="ranking-panel__state"')
+
+    expect(successBranch).toBeGreaterThan(-1)
+    expect(rankingRow).toBeGreaterThan(successBranch)
+    expect(stateBranch).toBeGreaterThan(rankingRow)
   })
 
   it('loads on page mount and refreshes after entering WON status', () => {
