@@ -41,6 +41,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  moveLoading: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits([
@@ -54,6 +58,7 @@ const emit = defineEmits([
   'back-room',
   'submit-password',
   'shortcut-notice',
+  'move-player',
 ])
 
 const areRoomItemsHighlighted = ref(false)
@@ -100,6 +105,18 @@ const availableDestinations = computed(() => {
     roomId,
     roomName: getRoomName(roomId),
   }))
+})
+const availableDirections = computed(() => {
+  if (Array.isArray(currentRoom.value?.exitDirections)) {
+    return currentRoom.value.exitDirections
+  }
+
+  const exits = currentRoom.value?.exits
+  if (!exits || Array.isArray(exits) || typeof exits !== 'object') {
+    return []
+  }
+
+  return Object.keys(exits)
 })
 const statusLabel = computed(() => (props.gameState?.status === 'IN_PROGRESS'
   ? '探索中'
@@ -181,8 +198,45 @@ const isTextEntryTarget = (target) => {
   return Boolean(element)
 }
 
+const arrowDirections = {
+  ArrowUp: 'north',
+  ArrowDown: 'south',
+  ArrowLeft: 'west',
+  ArrowRight: 'east',
+}
+
+const requestMovePlayer = (direction) => {
+  if (
+    props.moveLoading
+    || isBackpackOpen.value
+    || isHelpOpen.value
+    || isPasswordOpen.value
+  ) {
+    return
+  }
+
+  if (!isPlaying.value) {
+    emit('shortcut-notice', '当前不在探索状态，不能移动。')
+    return
+  }
+
+  if (!availableDirections.value.includes(direction)) {
+    emit('shortcut-notice', '当前房间没有这个方向的出口')
+    return
+  }
+
+  emit('move-player', direction)
+}
+
 const handleShortcutKey = (event) => {
   if (event.ctrlKey || event.altKey || event.metaKey || isTextEntryTarget(event.target)) {
+    return
+  }
+
+  const direction = arrowDirections[event.key]
+  if (direction) {
+    event.preventDefault()
+    requestMovePlayer(direction)
     return
   }
 
@@ -252,12 +306,14 @@ onBeforeUnmount(() => {
         :action-loading="shortcutLoading"
         :current-room="currentRoom"
         :help-open="isHelpOpen"
+        :move-loading="moveLoading"
         :password-prompt-open="isPasswordOpen"
         :password-unlocked="gameState?.passwordUnlocked"
         :room-items-highlighted="areRoomItemsHighlighted"
         :status="gameState?.status"
         :style="rectStyle(HUD_POSITIONS.actionPanel)"
         @back-room="requestBackRoom"
+        @move-player="$emit('move-player', $event)"
         @open-inventory="toggleBackpack"
         @open-password="openPassword"
         @toggle-help="toggleHelp"

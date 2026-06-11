@@ -9,6 +9,7 @@ import {
   listGameSaves,
   loadLatestSave,
   loadSave,
+  movePlayer,
   restartLevel,
   saveGame,
   startGame,
@@ -39,6 +40,7 @@ const gameLoading = ref(false)
 const gameActionLoading = ref(false)
 const itemActionLoading = ref(false)
 const shortcutActionLoading = ref(false)
+const moveLoading = ref(false)
 const gameErrorMessage = ref('')
 const gameNoticeMessage = ref('')
 const saves = ref([])
@@ -315,6 +317,34 @@ function handleShortcutNotice(message) {
   gameNoticeMessage.value = message
 }
 
+async function handleMovePlayer(direction) {
+  if (!sessionId.value) {
+    gameErrorMessage.value = '当前没有可操作的游戏会话'
+    return
+  }
+
+  if (gameState.value?.status !== 'IN_PROGRESS') {
+    gameErrorMessage.value = '当前不在探索状态，不能移动。'
+    return
+  }
+
+  if (moveLoading.value) return
+
+  moveLoading.value = true
+  gameErrorMessage.value = ''
+  gameNoticeMessage.value = ''
+
+  try {
+    const result = await movePlayer(sessionId.value, direction)
+    enterLoadedGame(result)
+    gameNoticeMessage.value = result?.message || ''
+  } catch (error) {
+    gameErrorMessage.value = getGameApiErrorMessage(error)
+  } finally {
+    moveLoading.value = false
+  }
+}
+
 async function continueLatestSave() {
   const token = getAuthToken()
 
@@ -439,6 +469,7 @@ onMounted(() => {
       :error-message="gameErrorMessage"
       :game-state="gameState"
       :item-action-loading="itemActionLoading"
+      :move-loading="moveLoading"
       :notice-message="gameNoticeMessage"
       :shortcut-loading="shortcutActionLoading"
       :username="username"
@@ -446,6 +477,7 @@ onMounted(() => {
       @back-room="handleBackRoom"
       @drop-item="handleDropItem"
       @exit-game="exitGame"
+      @move-player="handleMovePlayer"
       @restart-level="handleRestartLevel"
       @save-game="handleSaveGame"
       @shortcut-notice="handleShortcutNotice"
