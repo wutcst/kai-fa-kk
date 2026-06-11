@@ -23,6 +23,10 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  username: {
+    type: String,
+    default: '',
+  },
 })
 
 defineEmits(['open-inventory'])
@@ -42,11 +46,11 @@ const STATUS_SLOTS = {
   passwordLabel: { x: 62, y: 178, w: 88, h: 22 },
   passwordValue: { x: 151, y: 178, w: 150, h: 22 },
 
-  hpValue: { x: 215, y: 235, w: 64, h: 20 },
-  hpFill: { x: 90, y: 242, w: 160, h: 8 },
+  hpValue: { x: 215, y: 255, w: 64, h: 20 },
+  hpFill: { x: 90, y: 242, w: 180, h: 8 },
 
-  weightValue: { x: 210, y: 280, w: 64, h: 20 },
-  weightFill: { x: 90, y: 288, w: 160, h: 8 },
+  weightValue: { x: 210, y: 300, w: 64, h: 20 },
+  weightFill: { x: 90, y: 288, w: 180, h: 8 },
 
   backpackLabel: { x: 35, y: 330, w: 250, h: 34 },
   backpackCount: { x: 250, y: 329, w: 34, h: 34 },
@@ -108,7 +112,7 @@ const statusFrame = computed(() => getUiAsset('playerStatusFrame'))
       class="player-status-template__slot player-status-template__value"
       :style="slotStyle(STATUS_SLOTS.nameValue)"
     >
-      {{ player.name || '寻宝者' }}
+      {{ username || player.username || player.name || '寻宝者' }}
     </div>
 
     <div
