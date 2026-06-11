@@ -16,6 +16,10 @@ const props = defineProps({
     type: Object,
     required: true,
   },
+  username: {
+    type: String,
+    default: '',
+  },
 })
 
 defineEmits(['logout'])
@@ -104,6 +108,7 @@ onBeforeUnmount(() => {
           :password-unlocked="gameState.passwordUnlocked"
           :player="gameState.player"
           :status="gameState.status"
+          :username="username"
           @open-inventory="openBackpack"
         />
       </div>
@@ -134,7 +139,7 @@ onBeforeUnmount(() => {
       />
 
       <RankingPanel
-        :fallback-text="gameState.objective"
+        :fallback-text="gameState.currentObjectives"
         :ranking="gameState.ranking || gameState.leaderboard || []"
         :style="rectStyle(HUD_POSITIONS.ranking)"
       />
@@ -146,7 +151,10 @@ onBeforeUnmount(() => {
         :style="rectStyle(HUD_POSITIONS.log)"
       />
 
-      <RoomDescriptionBar :style="rectStyle(HUD_POSITIONS.narration)" />
+      <RoomDescriptionBar
+        :description="currentRoom?.description"
+        :style="rectStyle(HUD_POSITIONS.narration)"
+      />
 
       <img
         v-if="showDebugHud"

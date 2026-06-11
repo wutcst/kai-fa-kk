@@ -63,8 +63,10 @@ const slotStyle = (slot) => ({
 
 const actionFrame = computed(() => getUiAsset('actionPanelFrame'))
 const isPlaying = computed(() => props.status === 'IN_PROGRESS' || props.status === '探索中')
-const exitMap = computed(() => new Map(
-  (props.currentRoom.exits || []).map((exit) => [exit.direction, exit]),
+const availableDirections = computed(() => (
+  Array.isArray(props.currentRoom.exitDirections)
+    ? props.currentRoom.exitDirections
+    : []
 ))
 const roomItems = computed(() => props.currentRoom.items || props.currentRoom.visibleItems || [])
 const canInputPassword = computed(() => (
@@ -199,9 +201,10 @@ const directions = [
       class="action-panel-template__dir"
       type="button"
       :class="{
-        'action-panel-template__dir--disabled': !isPlaying || !exitMap.has(direction.direction),
+        'action-panel-template__dir--disabled': !isPlaying
+          || !availableDirections.includes(direction.direction),
       }"
-      :disabled="!isPlaying || !exitMap.has(direction.direction)"
+      :disabled="!isPlaying || !availableDirections.includes(direction.direction)"
       :style="slotStyle(direction.slot)"
     >
       {{ direction.label }}
