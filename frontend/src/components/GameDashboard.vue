@@ -1,5 +1,11 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import {
+  computed,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+} from 'vue'
 import { DASHBOARD_BASE, HUD_POSITIONS, rectStyle } from '../constants/dashboardLayout'
 import { getRoomBackground } from '../utils/assetMap'
 import { getRoomName } from '../utils/roomNameMap'
@@ -7,10 +13,13 @@ import ActionPanel from './ActionPanel.vue'
 import BackpackModal from './BackpackModal.vue'
 import GameHeader from './GameHeader.vue'
 import GameLog from './GameLog.vue'
+import GameNoticeModal from './GameNoticeModal.vue'
+import GameResultModal from './GameResultModal.vue'
 import GameScene from './GameScene.vue'
 import PlayerStatus from './PlayerStatus.vue'
 import RankingPanel from './RankingPanel.vue'
 import RoomDescriptionBar from './RoomDescriptionBar.vue'
+import ShopPanel from './ShopPanel.vue'
 
 const props = defineProps({
   gameState: {
@@ -45,6 +54,34 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  leaderboard: {
+    type: Array,
+    default: () => [],
+  },
+  leaderboardLoading: {
+    type: Boolean,
+    default: false,
+  },
+  leaderboardErrorMessage: {
+    type: String,
+    default: '',
+  },
+  shopCatalog: {
+    type: Array,
+    default: () => [],
+  },
+  shopLoading: {
+    type: Boolean,
+    default: false,
+  },
+  shopActionLoading: {
+    type: Boolean,
+    default: false,
+  },
+  shopErrorMessage: {
+    type: String,
+    default: '',
+  },
 })
 
 const emit = defineEmits([
@@ -59,6 +96,11 @@ const emit = defineEmits([
   'submit-password',
   'shortcut-notice',
   'move-player',
+  'buy-shop-item',
+  'sell-shop-item',
+  'continue-adventure',
+  'return-start-menu',
+  'start-new-game',
 ])
 
 const areRoomItemsHighlighted = ref(false)
@@ -69,10 +111,14 @@ const isPasswordOpen = ref(false)
 const passwordInput = ref('')
 const passwordError = ref('')
 const showDebugHud = ref(false)
+const isRescueNoticeOpen = ref(false)
+const lastNoticeMessage = ref('')
 
 const currentRoom = computed(() => props.gameState?.currentRoom || null)
 const currentLevel = computed(() => props.gameState?.currentLevel)
 const isPlaying = computed(() => props.gameState?.status === 'IN_PROGRESS')
+const isShopping = computed(() => props.gameState?.status === 'SHOPPING')
+const isTerminal = computed(() => ['WON', 'FAILED'].includes(props.gameState?.status))
 const chapterName = computed(() => ({
   1: '第一章：石门回声',
   2: '第二章：月纹回廊',
@@ -122,6 +168,30 @@ const statusLabel = computed(() => (props.gameState?.status === 'IN_PROGRESS'
   ? '探索中'
   : props.gameState?.status || ''))
 const roomBackground = computed(() => getRoomBackground(currentRoom.value?.id))
+const normalizeLogMessage = (log) => (
+  typeof log === 'string' ? log : log?.message || log?.content || ''
+)
+const rescueKeywords = [
+  '体力不足',
+  '体力耗尽',
+  '重新开始',
+  '重开当前关',
+  '当前关重新开始',
+  '回到本关起点',
+  '救援',
+]
+const rescueNoticeMessage = computed(() => {
+  if (isTerminal.value) return ''
+
+  const candidates = [
+    props.gameState?.message,
+    normalizeLogMessage(props.gameState?.logs?.at?.(-1)),
+  ].filter(Boolean)
+
+  return candidates.find((message) => (
+    rescueKeywords.some((keyword) => message.includes(keyword))
+  )) || ''
+})
 const stageStyle = computed(() => ({
   '--dashboard-scale': dashboardScale.value,
   '--room-background': `url(${roomBackground.value})`,
@@ -174,6 +244,10 @@ const closePassword = () => {
   isPasswordOpen.value = false
   passwordInput.value = ''
   passwordError.value = ''
+}
+
+const closeRescueNotice = () => {
+  isRescueNoticeOpen.value = false
 }
 
 const submitPasswordInput = () => {
@@ -233,6 +307,8 @@ const handleShortcutKey = (event) => {
     return
   }
 
+  if (isShopping.value) return
+
   const direction = arrowDirections[event.key]
   if (direction) {
     event.preventDefault()
@@ -265,6 +341,28 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('resize', updateDashboardScale)
   window.removeEventListener('keydown', handleShortcutKey)
+})
+
+watch(
+  rescueNoticeMessage,
+  (message) => {
+    if (!message) {
+      lastNoticeMessage.value = ''
+      return
+    }
+
+    if (message === lastNoticeMessage.value) return
+
+    lastNoticeMessage.value = message
+    isRescueNoticeOpen.value = true
+  },
+  { immediate: true },
+)
+
+watch(isTerminal, (terminal) => {
+  if (terminal) {
+    isRescueNoticeOpen.value = false
+  }
 })
 </script>
 
@@ -303,6 +401,7 @@ onBeforeUnmount(() => {
       </div>
 
       <ActionPanel
+        v-if="isPlaying"
         :action-loading="shortcutLoading"
         :current-room="currentRoom"
         :help-open="isHelpOpen"
@@ -321,6 +420,7 @@ onBeforeUnmount(() => {
       />
 
       <GameScene
+        v-if="isPlaying"
         :action-loading="itemActionLoading"
         :room="currentRoom"
         :room-items="roomItems"
@@ -330,7 +430,7 @@ onBeforeUnmount(() => {
       />
 
       <BackpackModal
-        v-if="isBackpackOpen"
+        v-if="isPlaying && isBackpackOpen"
         :action-loading="itemActionLoading"
         :items="inventoryItems"
         :player="gameState?.player || {}"
@@ -340,7 +440,7 @@ onBeforeUnmount(() => {
       />
 
       <div
-        v-if="isHelpOpen"
+        v-if="isPlaying && isHelpOpen"
         class="backpack-modal"
         role="presentation"
         @click.self="closeHelp"
@@ -407,7 +507,7 @@ onBeforeUnmount(() => {
       </div>
 
       <div
-        v-if="isPasswordOpen"
+        v-if="isPlaying && isPasswordOpen"
         class="backpack-modal"
         role="presentation"
         @click.self="closePassword"
@@ -469,9 +569,43 @@ onBeforeUnmount(() => {
         </section>
       </div>
 
+      <ShopPanel
+        v-if="isShopping"
+        :action-loading="shopActionLoading"
+        :catalog="shopCatalog"
+        :error-message="shopErrorMessage"
+        :loading="shopLoading"
+        :player="gameState?.player || {}"
+        @buy-item="$emit('buy-shop-item', $event)"
+        @continue-adventure="$emit('continue-adventure')"
+        @sell-item="$emit('sell-shop-item', $event)"
+      />
+
+      <GameResultModal
+        v-if="isTerminal"
+        :current-level="currentLevel"
+        :final-score="gameState?.finalScore"
+        :high-score="gameState?.highScore"
+        :loading="actionLoading"
+        :message="errorMessage || gameState?.message"
+        :player="gameState?.player || {}"
+        :room-name="currentRoom?.name"
+        :status="gameState?.status"
+        @restart-level="$emit('restart-level')"
+        @return-start-menu="$emit('return-start-menu')"
+        @start-new-game="$emit('start-new-game')"
+      />
+
+      <GameNoticeModal
+        v-else-if="isRescueNoticeOpen"
+        :message="rescueNoticeMessage"
+        @close="closeRescueNotice"
+      />
+
       <RankingPanel
-        :fallback-text="gameState?.currentObjectives"
-        :ranking="gameState?.ranking || gameState?.leaderboard || []"
+        :error-message="leaderboardErrorMessage"
+        :loading="leaderboardLoading"
+        :ranking="leaderboard"
         :style="rectStyle(HUD_POSITIONS.ranking)"
       />
 
