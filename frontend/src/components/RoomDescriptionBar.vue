@@ -21,6 +21,7 @@ const slotStyle = (slot) => ({
 })
 
 const narrationFrame = computed(() => getUiAsset('narrationBarFrame'))
+const roomDescription = computed(() => props.description || '暂无房间信息')
 </script>
 
 <template>
@@ -40,7 +41,7 @@ const narrationFrame = computed(() => getUiAsset('narrationBarFrame'))
       class="room-narration-template__text"
       :style="slotStyle(NARRATION_SLOTS.text)"
     >
-      {{ props.description }}
+      {{ roomDescription }}
     </p>
   </section>
 </template>
