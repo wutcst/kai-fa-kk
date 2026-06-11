@@ -15,7 +15,13 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
+  actionLoading: {
+    type: Boolean,
+    default: false,
+  },
 })
+
+defineEmits(['take-item'])
 
 const selectedItemId = ref(null)
 
@@ -43,9 +49,8 @@ const getDetailPlacement = (index) => (index % 4 >= 2 ? 'left' : 'right')
     @click="clearSelectedRoomItem"
   >
     <div
-      v-if="sceneItems.length"
+      v-if="roomItemsHighlighted && sceneItems.length"
       class="room-items-grid"
-      :class="{ 'room-items-grid--muted': !roomItemsHighlighted }"
     >
       <div
         v-for="(item, index) in sceneItems"
@@ -93,13 +98,21 @@ const getDetailPlacement = (index) => (index % 4 >= 2 ? 'left' : 'right')
           <div class="room-item-detail__meta">
             类型 {{ item.type }} · 重量 {{ item.weight ?? 0 }} · 价值 {{ item.moneyValue ?? 0 }}
           </div>
+          <div
+            v-if="item.staminaEffect > 0 || item.maxWeightEffect > 0"
+            class="room-item-detail__meta"
+          >
+            <span v-if="item.staminaEffect > 0">恢复体力 {{ item.staminaEffect }}</span>
+            <span v-if="item.maxWeightEffect > 0">增加负重 {{ item.maxWeightEffect }}</span>
+          </div>
           <p class="room-item-detail__desc">
             {{ item.description }}
           </p>
           <button
             class="room-item-detail__action"
             type="button"
-            @click.stop
+            :disabled="actionLoading"
+            @click.stop="$emit('take-item', item.id)"
           >
             拾取
           </button>
@@ -108,10 +121,10 @@ const getDetailPlacement = (index) => (index % 4 >= 2 ? 'left' : 'right')
     </div>
 
     <div
-      v-else
+      v-else-if="roomItemsHighlighted"
       class="room-items-empty"
     >
-      这里暂时没有可拾取物品。
+      当前房间没有可拾取物品。
     </div>
   </section>
 </template>

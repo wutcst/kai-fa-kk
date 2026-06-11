@@ -36,10 +36,18 @@ import iconBronzeMoonToken from '../assets/images/items/icon-bronze-moon-token.p
 import iconCleanWater from '../assets/images/items/icon-clean-water.png'
 import iconDryFood from '../assets/images/items/icon-dry-food.png'
 import iconGoldCrown from '../assets/images/items/icon-gold-crown.png'
+import iconIronBoots from '../assets/images/items/icon-iron-boots.png'
+import iconJadeBell from '../assets/images/items/icon-jade-bell.png'
 import iconKingScepter from '../assets/images/items/icon-king-scepter.png'
 import iconLantern from '../assets/images/items/icon-lantern.png'
+import iconLockpick from '../assets/images/items/icon-lockpick.png'
+import iconMerchantSeal from '../assets/images/items/icon-merchant-seal.png'
+import iconMoonDial from '../assets/images/items/icon-moon-dial.png'
 import iconOldMap from '../assets/images/items/icon-old-map.png'
 import iconRope from '../assets/images/items/icon-rope.png'
+import iconRubyIdol from '../assets/images/items/icon-ruby-idol.png'
+import iconSandglass from '../assets/images/items/icon-sandglass.png'
+import iconSilverCup from '../assets/images/items/icon-silver-cup.png'
 import iconStaminaPotion from '../assets/images/items/icon-stamina-potion.png'
 import iconStarCompass from '../assets/images/items/icon-star-compass.png'
 import iconTypeEquipment from '../assets/images/items/icon-type-equipment.png'
@@ -163,10 +171,18 @@ export const itemIcons = {
   'dry-food': iconDryFood,
   'stamina-potion': iconStaminaPotion,
   rope: iconRope,
+  'iron-boots': iconIronBoots,
+  lockpick: iconLockpick,
   lantern: iconLantern,
   'bronze-moon-token': iconBronzeMoonToken,
+  'jade-bell': iconJadeBell,
+  'silver-cup': iconSilverCup,
+  'moon-dial': iconMoonDial,
   'star-compass': iconStarCompass,
+  sandglass: iconSandglass,
+  'merchant-seal': iconMerchantSeal,
   'gold-crown': iconGoldCrown,
+  'ruby-idol': iconRubyIdol,
   'king-scepter': iconKingScepter,
   'black-pearl': iconBlackPearl,
 }

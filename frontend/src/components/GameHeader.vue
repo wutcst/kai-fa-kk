@@ -75,7 +75,7 @@ const topbarFrame = computed(() => getUiAsset('topbarFrame'))
       :style="slotStyle(TOPBAR_SLOTS.back)"
       @click="$emit('logout')"
     >
-      返回入口
+      退出游戏
     </button>
   </header>
 </template>

@@ -1062,7 +1062,7 @@ button {
 
 .player-status-template__label {
   color: #f4e3bd;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 900;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
   white-space: nowrap;
@@ -1071,19 +1071,32 @@ button {
 .player-status-template__value {
   overflow: hidden;
   color: #f7d78e;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 900;
   text-overflow: ellipsis;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
   white-space: nowrap;
 }
 
-.player-status-template__meter-value {
+.player-status-template__resource-value {
+  z-index: 2;
+  display: flex;
+  align-items: center;
   justify-content: flex-end;
+  color: #ffe37a;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1;
   text-align: right;
+  white-space: nowrap;
+  pointer-events: none;
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.95),
+    0 0 6px rgba(255, 214, 95, 0.4);
 }
 
 .player-status-template__meter-fill {
+  z-index: 1;
   overflow: hidden;
   border-radius: 999px;
 }
@@ -1960,8 +1973,160 @@ button {
   font-size: 16px;
 }
 
+.shortcut-modal {
+  width: min(560px, calc(100vw - 48px));
+  overflow: visible;
+}
+
+.shortcut-modal--password {
+  width: min(500px, calc(100vw - 48px));
+}
+
+.shortcut-modal__help-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 24px;
+  margin: 24px 0 0;
+  padding: 20px 22px 20px 42px;
+  border: 1px solid rgba(214, 166, 83, 0.3);
+  border-radius: 10px;
+  color: #f1dfbf;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.55;
+  background: rgba(5, 10, 17, 0.52);
+}
+
+.shortcut-modal__room-info {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.shortcut-modal__room-section {
+  padding: 14px 16px;
+  border: 1px solid rgba(214, 166, 83, 0.3);
+  border-radius: 10px;
+  background: rgba(5, 10, 17, 0.56);
+}
+
+.shortcut-modal__room-section h3 {
+  margin: 0 0 9px;
+  color: #f5d99b;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.shortcut-modal__room-section p {
+  margin: 0;
+  color: #f1dfbf;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.shortcut-modal__destinations {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shortcut-modal__destinations li {
+  display: grid;
+  grid-template-columns: 20px 42px 16px minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+  color: #f1dfbf;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.shortcut-modal__destinations strong {
+  color: #8ff3ff;
+  font-weight: 900;
+}
+
+.shortcut-modal__destinations li span:nth-child(2) {
+  color: #b9d7da;
+  font-size: 12px;
+}
+
+.shortcut-modal__form {
+  display: grid;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.shortcut-modal__input {
+  width: 100%;
+  height: 48px;
+  padding: 0 16px;
+  border: 1px solid rgba(214, 166, 83, 0.5);
+  border-radius: 9px;
+  outline: none;
+  color: #f1dfbf;
+  font-size: 16px;
+  font-weight: 700;
+  background: rgba(4, 9, 15, 0.78);
+  box-shadow: inset 0 0 14px rgba(80, 210, 230, 0.05);
+}
+
+.shortcut-modal__input:focus {
+  border-color: rgba(112, 218, 234, 0.64);
+  box-shadow:
+    0 0 14px rgba(80, 210, 230, 0.12),
+    inset 0 0 14px rgba(80, 210, 230, 0.08);
+}
+
+.shortcut-modal__error {
+  margin: 0;
+  color: #e9a48d;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.shortcut-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.shortcut-modal__actions button {
+  min-width: 104px;
+  height: 38px;
+  padding: 0 16px;
+  border: 1px solid rgba(214, 166, 83, 0.56);
+  border-radius: 8px;
+  color: #f3d8a2;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+  background: rgba(70, 42, 20, 0.78);
+}
+
+.shortcut-modal__actions button[type="submit"] {
+  border-color: rgba(106, 214, 231, 0.5);
+  background: rgba(23, 62, 72, 0.78);
+}
+
+.shortcut-modal__actions button:disabled {
+  opacity: 0.48;
+  cursor: wait;
+}
+
 @media (max-width: 700px) {
   .inventory-items-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .shortcut-modal__help-list {
+    grid-template-columns: 1fr;
+  }
+
+  .shortcut-modal__room-info {
     grid-template-columns: 1fr;
   }
 }

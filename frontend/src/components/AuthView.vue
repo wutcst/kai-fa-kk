@@ -3,17 +3,35 @@ import { computed, ref } from 'vue'
 import sesameLogo from '../assets/images/logo/sesame-logo.png'
 import { getPageBackground } from '../utils/assetMap'
 
-defineProps({
+const props = defineProps({
   intro: {
     type: Object,
     required: true,
   },
+  loading: {
+    type: Boolean,
+    default: false,
+  },
+  errorMessage: {
+    type: String,
+    default: '',
+  },
 })
 
-defineEmits(['enter-game'])
+const emit = defineEmits(['login', 'register'])
 
 const viewMode = ref('landing')
 const authMode = ref('login')
+const localErrorMessage = ref('')
+const loginForm = ref({
+  username: '',
+  password: '',
+})
+const registerForm = ref({
+  username: '',
+  password: '',
+})
+const displayedErrorMessage = computed(() => localErrorMessage.value || props.errorMessage)
 const authBackground = computed(() => {
   if (viewMode.value === 'intro') return getPageBackground('intro')
   if (viewMode.value === 'auth') return getPageBackground('auth')
@@ -32,6 +50,35 @@ const showIntro = () => {
 const backToLanding = () => {
   viewMode.value = 'landing'
   authMode.value = 'login'
+  localErrorMessage.value = ''
+}
+
+const validateCredentials = ({ username, password }) => {
+  if (!username.trim() || !password) {
+    localErrorMessage.value = '用户名和密码不能为空'
+    return false
+  }
+
+  localErrorMessage.value = ''
+  return true
+}
+
+const submitLogin = () => {
+  if (!validateCredentials(loginForm.value)) return
+
+  emit('login', {
+    username: loginForm.value.username.trim(),
+    password: loginForm.value.password,
+  })
+}
+
+const submitRegister = () => {
+  if (!validateCredentials(registerForm.value)) return
+
+  emit('register', {
+    username: registerForm.value.username.trim(),
+    password: registerForm.value.password,
+  })
 }
 </script>
 
@@ -197,6 +244,14 @@ const backToLanding = () => {
           {{ authMode === 'login' ? '输入暗语凭证，踏入石门后的秘窟。' : '创建寻宝者身份，准备进入第一次探索。' }}
         </p>
 
+        <p
+          v-if="displayedErrorMessage"
+          class="auth-form-error"
+          role="alert"
+        >
+          {{ displayedErrorMessage }}
+        </p>
+
         <div
           class="auth-tabs"
           role="tablist"
@@ -221,11 +276,12 @@ const backToLanding = () => {
         <form
           v-if="authMode === 'login'"
           class="auth-form"
-          @submit.prevent="$emit('enter-game')"
+          @submit.prevent="submitLogin"
         >
           <label>
             <span>用户名</span>
             <input
+              v-model="loginForm.username"
               placeholder="请输入用户名"
               autocomplete="username"
             >
@@ -233,13 +289,17 @@ const backToLanding = () => {
           <label>
             <span>密码</span>
             <input
+              v-model="loginForm.password"
               placeholder="请输入密码"
               type="password"
               autocomplete="current-password"
             >
           </label>
-          <button type="submit">
-            进入秘窟
+          <button
+            type="submit"
+            :disabled="loading"
+          >
+            {{ loading ? '请求中...' : '进入秘窟' }}
           </button>
           <button
             type="button"
@@ -253,29 +313,30 @@ const backToLanding = () => {
         <form
           v-else
           class="auth-form"
-          @submit.prevent
+          @submit.prevent="submitRegister"
         >
           <label>
             <span>用户名</span>
             <input
+              v-model="registerForm.username"
               placeholder="设置登录用户名"
               autocomplete="username"
             >
           </label>
           <label>
-            <span>昵称</span>
-            <input placeholder="设置寻宝者昵称">
-          </label>
-          <label>
             <span>密码</span>
             <input
+              v-model="registerForm.password"
               placeholder="设置密码"
               type="password"
               autocomplete="new-password"
             >
           </label>
-          <button type="button">
-            创建寻宝者
+          <button
+            type="submit"
+            :disabled="loading"
+          >
+            {{ loading ? '请求中...' : '创建寻宝者' }}
           </button>
           <button
             type="button"
@@ -289,3 +350,23 @@ const backToLanding = () => {
     </section>
   </section>
 </template>
+
+<style scoped>
+.auth-form-error {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(145, 60, 42, 0.42);
+  border-radius: 8px;
+  color: #7d2d1f;
+  background: rgba(255, 235, 224, 0.84);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.auth-form button:disabled {
+  cursor: wait;
+  opacity: 0.62;
+  transform: none;
+}
+</style>

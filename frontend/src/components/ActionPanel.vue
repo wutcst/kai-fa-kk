@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { getUiAsset } from '../utils/assetMap'
+import { getRoomName } from '../utils/roomNameMap'
 
 const props = defineProps({
   currentRoom: {
@@ -23,9 +24,28 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  helpOpen: {
+    type: Boolean,
+    default: false,
+  },
+  actionLoading: {
+    type: Boolean,
+    default: false,
+  },
+  moveLoading: {
+    type: Boolean,
+    default: false,
+  },
 })
 
-const emit = defineEmits(['toggle-room-items', 'open-inventory'])
+const emit = defineEmits([
+  'back-room',
+  'toggle-help',
+  'toggle-room-items',
+  'open-inventory',
+  'open-password',
+  'move-player',
+])
 
 const ACTION_SLOTS = {
   title: { x: 0, y: 35, w: 320, h: 30 },
@@ -63,16 +83,24 @@ const slotStyle = (slot) => ({
 
 const actionFrame = computed(() => getUiAsset('actionPanelFrame'))
 const isPlaying = computed(() => props.status === 'IN_PROGRESS' || props.status === '探索中')
-const exitMap = computed(() => new Map(
-  (props.currentRoom.exits || []).map((exit) => [exit.direction, exit]),
-))
-const roomItems = computed(() => props.currentRoom.items || props.currentRoom.visibleItems || [])
-const canInputPassword = computed(() => (
-  isPlaying.value
-  && props.currentRoom.requiresPassword
-  && !props.passwordUnlocked
-))
+const availableDirections = computed(() => {
+  if (Array.isArray(props.currentRoom.exitDirections)) {
+    return props.currentRoom.exitDirections
+  }
 
+  const exits = props.currentRoom.exits
+  return exits && typeof exits === 'object' && !Array.isArray(exits)
+    ? Object.keys(exits)
+    : []
+})
+const getDirectionTitle = (direction) => {
+  if (!availableDirections.value.includes(direction)) {
+    return '当前房间没有这个方向的出口'
+  }
+
+  const targetRoomId = props.currentRoom.exits?.[direction]
+  return targetRoomId ? `前往：${getRoomName(targetRoomId)}` : `向${direction}移动`
+}
 const actionRows = computed(() => [
   {
     id: 'return',
@@ -81,16 +109,19 @@ const actionRows = computed(() => [
     rowSlot: ACTION_SLOTS.row1,
     labelSlot: ACTION_SLOTS.label1,
     keySlot: ACTION_SLOTS.key1,
-    disabled: !isPlaying.value,
+    disabled: !isPlaying.value || props.actionLoading,
+    onClick: () => emit('back-room'),
   },
   {
-    id: 'home',
-    label: '回到初始房间',
+    id: 'help',
+    label: '操作帮助',
     key: 'H',
     rowSlot: ACTION_SLOTS.row2,
     labelSlot: ACTION_SLOTS.label2,
     keySlot: ACTION_SLOTS.key2,
-    disabled: !isPlaying.value,
+    disabled: false,
+    active: props.helpOpen,
+    onClick: () => emit('toggle-help'),
   },
   {
     id: 'items',
@@ -99,7 +130,7 @@ const actionRows = computed(() => [
     rowSlot: ACTION_SLOTS.row3,
     labelSlot: ACTION_SLOTS.label3,
     keySlot: ACTION_SLOTS.key3,
-    disabled: !isPlaying.value || !roomItems.value.length,
+    disabled: false,
     active: props.roomItemsHighlighted,
     onClick: () => emit('toggle-room-items'),
   },
@@ -115,14 +146,15 @@ const actionRows = computed(() => [
   },
   {
     id: 'password',
-    label: props.passwordUnlocked ? '暗语已解锁' : '输入暗语',
+    label: '输入暗语',
     key: 'P',
     rowSlot: ACTION_SLOTS.row5,
     labelSlot: ACTION_SLOTS.label5,
     keySlot: ACTION_SLOTS.key5,
-    disabled: !canInputPassword.value,
+    disabled: !isPlaying.value || props.actionLoading,
     active: props.passwordPromptOpen,
-    available: canInputPassword.value && !props.passwordPromptOpen,
+    available: props.currentRoom.id === 'mechanism-gallery' && !props.passwordUnlocked,
+    onClick: () => emit('open-password'),
   },
 ])
 
@@ -169,6 +201,7 @@ const directions = [
         }"
         :disabled="action.disabled"
         :style="slotStyle(action.rowSlot)"
+        :aria-keyshortcuts="action.key"
         @click="action.onClick?.()"
       />
       <span
@@ -199,10 +232,14 @@ const directions = [
       class="action-panel-template__dir"
       type="button"
       :class="{
-        'action-panel-template__dir--disabled': !isPlaying || !exitMap.has(direction.direction),
+        'action-panel-template__dir--disabled': !isPlaying
+          || moveLoading
+          || !availableDirections.includes(direction.direction),
       }"
-      :disabled="!isPlaying || !exitMap.has(direction.direction)"
+      :disabled="!isPlaying || moveLoading || !availableDirections.includes(direction.direction)"
       :style="slotStyle(direction.slot)"
+      :title="getDirectionTitle(direction.direction)"
+      @click="$emit('move-player', direction.direction)"
     >
       {{ direction.label }}
     </button>
