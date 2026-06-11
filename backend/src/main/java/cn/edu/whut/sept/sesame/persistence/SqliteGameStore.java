@@ -10,6 +10,7 @@
 package cn.edu.whut.sept.sesame.persistence;
 
 import cn.edu.whut.sept.sesame.dto.GameSaveSummary;
+import cn.edu.whut.sept.sesame.dto.LeaderboardEntry;
 import cn.edu.whut.sept.sesame.model.GameStatus;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -152,6 +153,38 @@ public class SqliteGameStore {
             return score;
         } catch (SQLException exception) {
             throw new IllegalStateException("更新最高分失败：" + exception.getMessage(), exception);
+        }
+    }
+
+    /**
+     * 查询历史最高分排行榜。
+     *
+     * @param limit 返回条目数量上限
+     * @return 按最高分降序、用户名升序排列的排行榜
+     */
+    public List<LeaderboardEntry> listTopHighScores(int limit) {
+        String sql = """
+                SELECT username, high_score
+                FROM users
+                WHERE high_score > 0
+                ORDER BY high_score DESC, username ASC
+                LIMIT ?
+                """;
+        List<LeaderboardEntry> entries = new ArrayList<>();
+        try (Connection connection = openConnection();
+                PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, limit);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                int rank = 1;
+                while (resultSet.next()) {
+                    entries.add(new LeaderboardEntry(rank, resultSet.getString("username"),
+                            resultSet.getInt("high_score")));
+                    rank++;
+                }
+            }
+            return entries;
+        } catch (SQLException exception) {
+            throw new IllegalStateException("查询排行榜失败：" + exception.getMessage(), exception);
         }
     }
 

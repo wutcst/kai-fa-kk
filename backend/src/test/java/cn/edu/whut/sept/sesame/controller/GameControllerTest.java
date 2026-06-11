@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import cn.edu.whut.sept.sesame.persistence.SqliteGameStore;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,9 @@ class GameControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private SqliteGameStore gameStore;
 
     /**
      * 确认开始游戏接口可以返回初始游戏状态。
@@ -269,6 +273,89 @@ class GameControllerTest {
         mockMvc.perform(post("/api/game/load").param("token", token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.currentRoom.id").value("stone-court"));
+    }
+
+    /**
+     * 确认商店目录接口限制商店状态并返回完整稳定目录。
+     *
+     * @throws Exception MockMvc 请求异常
+     */
+    @Test
+    void shopCatalogRequiresShoppingStateAndReturnsCatalog() throws Exception {
+        MvcResult startResult = startGameWithLogin();
+        String sessionId = JsonPath.read(
+                startResult.getResponse().getContentAsString(StandardCharsets.UTF_8), "$.sessionId");
+
+        mockMvc.perform(get("/api/game/shop/catalog").param("sessionId", sessionId))
+                .andExpect(status().isConflict());
+
+        move(sessionId, "east");
+        move(sessionId, "east");
+        move(sessionId, "south");
+        move(sessionId, "south");
+        move(sessionId, "south");
+
+        mockMvc.perform(get("/api/game/shop/catalog").param("sessionId", sessionId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(7))
+                .andExpect(jsonPath("$[0].itemId").value("clean-water"))
+                .andExpect(jsonPath("$[0].price").value(10))
+                .andExpect(jsonPath("$[0].name").isNotEmpty())
+                .andExpect(jsonPath("$[0].description").isNotEmpty())
+                .andExpect(jsonPath("$[0].type").value("SUPPLY"))
+                .andExpect(jsonPath("$[0].weight").value(2))
+                .andExpect(jsonPath("$[0].staminaEffect").value(10))
+                .andExpect(jsonPath("$[0].maxWeightEffect").value(0))
+                .andExpect(jsonPath("$[0].moneyValue").value(0))
+                .andExpect(jsonPath("$[6].itemId").value("lantern"))
+                .andExpect(jsonPath("$[6].price").value(15));
+    }
+
+    /**
+     * 确认排行榜接口支持稳定排序、limit 和非法参数校验。
+     *
+     * @throws Exception MockMvc 请求异常
+     */
+    @Test
+    void leaderboardReturnsSortedEntriesAndRejectsInvalidLimit() throws Exception {
+        String suffix = UUID.randomUUID().toString();
+        String firstUsername = "leader-a-" + suffix;
+        String secondUsername = "leader-b-" + suffix;
+        String zeroUsername = "leader-zero-" + suffix;
+        registerUser(firstUsername);
+        registerUser(secondUsername);
+        registerUser(zeroUsername);
+        gameStore.updateHighScore(firstUsername, Integer.MAX_VALUE);
+        gameStore.updateHighScore(secondUsername, Integer.MAX_VALUE);
+
+        mockMvc.perform(get("/api/game/leaderboard").param("limit", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].rank").value(1))
+                .andExpect(jsonPath("$[0].username").isNotEmpty())
+                .andExpect(jsonPath("$[0].score").isNumber())
+                .andExpect(jsonPath("$[1].rank").value(2))
+                .andExpect(jsonPath("$[1].username").isNotEmpty())
+                .andExpect(jsonPath("$[1].score").isNumber());
+
+        mockMvc.perform(get("/api/game/leaderboard").param("limit", "0"))
+                .andExpect(status().isConflict());
+        mockMvc.perform(get("/api/game/leaderboard").param("limit", "101"))
+                .andExpect(status().isConflict());
+    }
+
+    private void move(String sessionId, String direction) throws Exception {
+        mockMvc.perform(post("/api/game/move")
+                        .param("sessionId", sessionId)
+                        .param("direction", direction))
+                .andExpect(status().isOk());
+    }
+
+    private void registerUser(String username) throws Exception {
+        mockMvc.perform(post("/api/auth/register")
+                        .param("username", username)
+                        .param("password", "123456"))
+                .andExpect(status().isOk());
     }
 
     private MvcResult startGameWithLogin() throws Exception {
