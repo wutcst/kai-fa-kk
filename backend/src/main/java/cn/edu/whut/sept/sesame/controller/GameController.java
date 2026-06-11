@@ -15,6 +15,8 @@ package cn.edu.whut.sept.sesame.controller;
 
 import cn.edu.whut.sept.sesame.dto.GameState;
 import cn.edu.whut.sept.sesame.dto.GameSaveSummary;
+import cn.edu.whut.sept.sesame.dto.LeaderboardEntry;
+import cn.edu.whut.sept.sesame.dto.ShopCatalogItem;
 import cn.edu.whut.sept.sesame.service.GameService;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -200,6 +202,21 @@ public class GameController {
     }
 
     /**
+     * 查询当前商店阶段可购买的商品目录。
+     *
+     * @param sessionId 会话编号
+     * @return 商店商品目录
+     */
+    @GetMapping("/shop/catalog")
+    public List<ShopCatalogItem> listShopCatalog(@RequestParam String sessionId) {
+        try {
+            return gameService.listShopCatalog(sessionId);
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, exception.getMessage(), exception);
+        }
+    }
+
+    /**
      * 重新开始当前关。
      *
      * @param sessionId 会话编号
@@ -290,6 +307,21 @@ public class GameController {
     public List<GameSaveSummary> listGameSaves(@RequestParam String token) {
         try {
             return gameService.listGameSaves(token);
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, exception.getMessage(), exception);
+        }
+    }
+
+    /**
+     * 查询公开历史最高分排行榜。
+     *
+     * @param limit 返回条目数量上限
+     * @return 排行榜条目
+     */
+    @GetMapping("/leaderboard")
+    public List<LeaderboardEntry> listLeaderboard(@RequestParam(defaultValue = "10") int limit) {
+        try {
+            return gameService.listLeaderboard(limit);
         } catch (IllegalArgumentException | IllegalStateException exception) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, exception.getMessage(), exception);
         }

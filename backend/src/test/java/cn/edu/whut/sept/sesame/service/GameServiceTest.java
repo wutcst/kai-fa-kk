@@ -13,11 +13,14 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import cn.edu.whut.sept.sesame.dto.GameState;
+import cn.edu.whut.sept.sesame.dto.LeaderboardEntry;
+import cn.edu.whut.sept.sesame.dto.ShopCatalogItem;
 import cn.edu.whut.sept.sesame.model.GameSession;
 import cn.edu.whut.sept.sesame.model.GameStatus;
 import cn.edu.whut.sept.sesame.model.Player;
 import cn.edu.whut.sept.sesame.persistence.SqliteGameStore;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -384,6 +387,73 @@ class GameServiceTest {
         GameService service = createService();
 
         assertThrows(IllegalStateException.class, () -> service.getState("missing-session"));
+    }
+
+    /**
+     * 确认商店目录仅在商店阶段可查询，并与购买价格使用同一来源。
+     */
+    @Test
+    void shopCatalogIsStableAndMatchesPurchasePrice() {
+        GameService service = createService();
+        GameState state = service.startGame();
+
+        assertThrows(IllegalStateException.class, () -> service.listShopCatalog(state.getSessionId()));
+
+        service.getCurrentSession(state.getSessionId()).setStatus(GameStatus.SHOPPING);
+        List<ShopCatalogItem> catalog = service.listShopCatalog(state.getSessionId());
+
+        assertEquals(7, catalog.size());
+        assertEquals(List.of("clean-water", "dry-food", "stamina-potion", "rope", "iron-boots",
+                "lockpick", "lantern"), catalog.stream().map(ShopCatalogItem::getItemId).toList());
+        assertEquals(List.of(10, 8, 18, 20, 25, 25, 15),
+                catalog.stream().map(ShopCatalogItem::getPrice).toList());
+        assertFalse(catalog.get(0).getName().isBlank());
+        assertFalse(catalog.get(0).getDescription().isBlank());
+        assertEquals(2, catalog.get(0).getWeight());
+        assertEquals(10, catalog.get(0).getStaminaEffect());
+
+        int moneyBeforePurchase = state.getPlayer().getMoney();
+        GameState purchasedState = service.buyItem(state.getSessionId(), catalog.get(0).getItemId());
+        assertEquals(moneyBeforePurchase - catalog.get(0).getPrice(), purchasedState.getPlayer().getMoney());
+    }
+
+    /**
+     * 确认排行榜过滤零分用户，并按分数和用户名稳定排序。
+     */
+    @Test
+    void leaderboardFiltersSortsAndLimitsHighScores() {
+        SqliteGameStore store = new SqliteGameStore(tempDir.resolve("leaderboard.db"));
+        GameService service = new GameService(store);
+        service.register("zero-player", "123456");
+        service.register("charlie", "123456");
+        service.register("alice", "123456");
+        service.register("bob", "123456");
+        store.updateHighScore("charlie", 80);
+        store.updateHighScore("alice", 120);
+        store.updateHighScore("bob", 120);
+
+        List<LeaderboardEntry> entries = service.listLeaderboard(2);
+
+        assertEquals(2, entries.size());
+        assertEquals("alice", entries.get(0).getUsername());
+        assertEquals(120, entries.get(0).getScore());
+        assertEquals(1, entries.get(0).getRank());
+        assertEquals("bob", entries.get(1).getUsername());
+        assertEquals(2, entries.get(1).getRank());
+        assertTrue(entries.stream().noneMatch(entry -> entry.getUsername().equals("zero-player")));
+        assertThrows(IllegalArgumentException.class, () -> service.listLeaderboard(0));
+        assertThrows(IllegalArgumentException.class, () -> service.listLeaderboard(101));
+    }
+
+    /**
+     * 确认没有有效成绩时排行榜为空。
+     */
+    @Test
+    void leaderboardIsEmptyWithoutPositiveScores() {
+        GameService service = createService();
+        service.register("zero-player", "123456");
+
+        assertTrue(service.listLeaderboard(10).isEmpty());
     }
 
     private GameService createService() {
