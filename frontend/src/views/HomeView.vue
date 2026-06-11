@@ -1,11 +1,12 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { getApiErrorMessage, login, register } from '../api/authApi'
 import {
   abandonAdventure,
   backToPreviousRoom,
   dropItem,
   getGameApiErrorMessage,
+  getLeaderboard,
   listGameSaves,
   loadLatestSave,
   loadSave,
@@ -46,6 +47,9 @@ const gameNoticeMessage = ref('')
 const saves = ref([])
 const saveLoading = ref(false)
 const saveErrorMessage = ref('')
+const leaderboard = ref([])
+const leaderboardLoading = ref(false)
+const leaderboardErrorMessage = ref('')
 const currentView = ref(authToken.value ? 'start-menu' : 'auth')
 
 function enterStartMenu() {
@@ -433,7 +437,31 @@ async function loadSaveSummaries() {
   }
 }
 
+async function loadLeaderboard() {
+  leaderboardLoading.value = true
+  leaderboardErrorMessage.value = ''
+
+  try {
+    leaderboard.value = await getLeaderboard(3)
+  } catch (error) {
+    leaderboard.value = []
+    leaderboardErrorMessage.value = getGameApiErrorMessage(error)
+  } finally {
+    leaderboardLoading.value = false
+  }
+}
+
+watch(
+  () => gameState.value?.status,
+  (status, previousStatus) => {
+    if (status === 'WON' && previousStatus !== 'WON') {
+      void loadLeaderboard()
+    }
+  },
+)
+
 onMounted(() => {
+  void loadLeaderboard()
   if (currentView.value === 'start-menu') {
     void loadSaveSummaries()
   }
@@ -469,6 +497,9 @@ onMounted(() => {
       :error-message="gameErrorMessage"
       :game-state="gameState"
       :item-action-loading="itemActionLoading"
+      :leaderboard="leaderboard"
+      :leaderboard-error-message="leaderboardErrorMessage"
+      :leaderboard-loading="leaderboardLoading"
       :move-loading="moveLoading"
       :notice-message="gameNoticeMessage"
       :shortcut-loading="shortcutActionLoading"

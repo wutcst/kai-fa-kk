@@ -45,6 +45,18 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  leaderboard: {
+    type: Array,
+    default: () => [],
+  },
+  leaderboardLoading: {
+    type: Boolean,
+    default: false,
+  },
+  leaderboardErrorMessage: {
+    type: String,
+    default: '',
+  },
 })
 
 const emit = defineEmits([
@@ -470,8 +482,9 @@ onBeforeUnmount(() => {
       </div>
 
       <RankingPanel
-        :fallback-text="gameState?.currentObjectives"
-        :ranking="gameState?.ranking || gameState?.leaderboard || []"
+        :error-message="leaderboardErrorMessage"
+        :loading="leaderboardLoading"
+        :ranking="leaderboard"
         :style="rectStyle(HUD_POSITIONS.ranking)"
       />
 

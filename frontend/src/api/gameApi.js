@@ -208,3 +208,14 @@ export async function listGameSaves(token) {
   const saves = await requestGame('get', '/game/saves', { token });
   return Array.isArray(saves) ? saves : [];
 }
+
+/**
+ * Lists public leaderboard entries.
+ *
+ * @param {number} limit Maximum number of entries to return.
+ * @returns {Promise<object[]>} Leaderboard entries.
+ */
+export async function getLeaderboard(limit = 3) {
+  const entries = await requestGame('get', '/game/leaderboard', { limit });
+  return Array.isArray(entries) ? entries : [];
+}
