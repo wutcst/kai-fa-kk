@@ -92,6 +92,16 @@ export function move(sessionId, direction) {
 }
 
 /**
+ * Returns the player to the previous room.
+ *
+ * @param {string} sessionId Game session identifier.
+ * @returns {Promise<object>} Updated game state.
+ */
+export function backToPreviousRoom(sessionId) {
+  return requestGame('post', '/game/back', { sessionId }, true);
+}
+
+/**
  * Takes an item from the current room.
  *
  * @param {string} sessionId Game session identifier.
@@ -132,7 +142,7 @@ export function useItem(sessionId, itemId) {
  * @returns {Promise<object>} Updated game state.
  */
 export function submitPassword(sessionId, password) {
-  return requestGame('post', '/game/password', { sessionId, password });
+  return requestGame('post', '/game/password', { sessionId, password }, true);
 }
 
 /**
