@@ -87,7 +87,7 @@ export function getGameState(sessionId) {
  * @param {string} direction Direction accepted by the backend.
  * @returns {Promise<object>} Updated game state.
  */
-export function move(sessionId, direction) {
+export function movePlayer(sessionId, direction) {
   return requestGame('post', '/game/move', { sessionId, direction }, true);
 }
 
