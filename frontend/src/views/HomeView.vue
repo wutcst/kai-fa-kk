@@ -2,11 +2,17 @@
 import { onMounted, ref } from 'vue'
 import { getApiErrorMessage, login, register } from '../api/authApi'
 import {
+  abandonAdventure,
+  dropItem,
   getGameApiErrorMessage,
   listGameSaves,
   loadLatestSave,
   loadSave,
+  restartLevel,
+  saveGame,
   startGame,
+  takeItem,
+  useItem,
 } from '../api/gameApi'
 import AuthView from '../components/AuthView.vue'
 import GameDashboard from '../components/GameDashboard.vue'
@@ -28,7 +34,10 @@ const authErrorMessage = ref('')
 const gameState = ref(null)
 const sessionId = ref(getSessionValue(SESSION_ID_KEY))
 const gameLoading = ref(false)
+const gameActionLoading = ref(false)
+const itemActionLoading = ref(false)
 const gameErrorMessage = ref('')
+const gameNoticeMessage = ref('')
 const saves = ref([])
 const saveLoading = ref(false)
 const saveErrorMessage = ref('')
@@ -36,6 +45,13 @@ const currentView = ref(authToken.value ? 'start-menu' : 'auth')
 
 function enterStartMenu() {
   currentView.value = 'start-menu'
+  void loadSaveSummaries()
+}
+
+function exitGame() {
+  currentView.value = 'start-menu'
+  gameErrorMessage.value = ''
+  gameNoticeMessage.value = ''
   void loadSaveSummaries()
 }
 
@@ -123,6 +139,122 @@ async function startNewGame() {
   }
 }
 
+async function handleSaveGame() {
+  const token = getAuthToken()
+
+  if (!token) {
+    gameErrorMessage.value = '请先登录后再保存游戏'
+    return
+  }
+
+  if (!sessionId.value) {
+    gameErrorMessage.value = '当前没有可保存的游戏会话'
+    return
+  }
+
+  gameActionLoading.value = true
+  gameErrorMessage.value = ''
+  gameNoticeMessage.value = ''
+
+  try {
+    const result = await saveGame(token, sessionId.value, '自动存档')
+    enterLoadedGame(result)
+    gameNoticeMessage.value = result?.message || '游戏已保存'
+    await loadSaveSummaries()
+  } catch (error) {
+    gameErrorMessage.value = getGameApiErrorMessage(error)
+  } finally {
+    gameActionLoading.value = false
+  }
+}
+
+async function handleRestartLevel() {
+  if (!sessionId.value) {
+    gameErrorMessage.value = '当前没有可重开的游戏会话'
+    return
+  }
+
+  gameActionLoading.value = true
+  gameErrorMessage.value = ''
+  gameNoticeMessage.value = ''
+
+  try {
+    const result = await restartLevel(sessionId.value)
+    enterLoadedGame(result)
+    gameNoticeMessage.value = result?.message || '当前关已重新开始'
+  } catch (error) {
+    gameErrorMessage.value = getGameApiErrorMessage(error)
+  } finally {
+    gameActionLoading.value = false
+  }
+}
+
+async function handleAbandonAdventure() {
+  const confirmed = window.confirm('确定要放弃本次探险吗？当前探险将结束，相关存档可能会被删除。')
+  if (!confirmed) return
+
+  if (!sessionId.value) {
+    gameErrorMessage.value = '当前没有可放弃的游戏会话'
+    return
+  }
+
+  gameActionLoading.value = true
+  gameErrorMessage.value = ''
+  gameNoticeMessage.value = ''
+
+  try {
+    const result = await abandonAdventure(sessionId.value)
+    gameNoticeMessage.value = result?.message || '已放弃本次探险'
+    sessionId.value = ''
+    gameState.value = null
+    sessionStorage.removeItem(SESSION_ID_KEY)
+    await loadSaveSummaries()
+    currentView.value = 'start-menu'
+  } catch (error) {
+    gameErrorMessage.value = getGameApiErrorMessage(error)
+  } finally {
+    gameActionLoading.value = false
+  }
+}
+
+async function runItemAction(itemId, action) {
+  if (!sessionId.value) {
+    gameErrorMessage.value = '当前没有可操作的游戏会话'
+    return
+  }
+
+  if (!itemId) {
+    gameErrorMessage.value = '物品编号无效'
+    return
+  }
+
+  itemActionLoading.value = true
+  gameErrorMessage.value = ''
+  gameNoticeMessage.value = ''
+
+  try {
+    const result = await action(sessionId.value, itemId)
+    enterLoadedGame(result)
+    gameNoticeMessage.value = result?.message || ''
+  } catch (error) {
+    gameErrorMessage.value = getGameApiErrorMessage(error)
+  } finally {
+    itemActionLoading.value = false
+  }
+}
+
+function handleTakeItem(itemId) {
+  return runItemAction(itemId, takeItem)
+}
+
+function handleUseItem(itemId) {
+  return runItemAction(itemId, useItem)
+}
+
+function handleDropItem(itemId) {
+  return runItemAction(itemId, dropItem)
+}
+
 async function continueLatestSave() {
   const token = getAuthToken()
 
@@ -179,6 +311,7 @@ function leaveGame() {
   gameState.value = null
   sessionId.value = ''
   gameErrorMessage.value = ''
+  gameNoticeMessage.value = ''
   saves.value = []
   saveErrorMessage.value = ''
   sessionStorage.removeItem(AUTH_TOKEN_KEY)
@@ -242,9 +375,19 @@ onMounted(() => {
     />
     <GameDashboard
       v-else
-      :game-state="gameState || mockGameState"
+      :action-loading="gameLoading || gameActionLoading"
+      :error-message="gameErrorMessage"
+      :game-state="gameState"
+      :item-action-loading="itemActionLoading"
+      :notice-message="gameNoticeMessage"
       :username="username"
-      @logout="leaveGame"
+      @abandon-adventure="handleAbandonAdventure"
+      @drop-item="handleDropItem"
+      @exit-game="exitGame"
+      @restart-level="handleRestartLevel"
+      @save-game="handleSaveGame"
+      @take-item="handleTakeItem"
+      @use-item="handleUseItem"
     />
   </main>
 </template>

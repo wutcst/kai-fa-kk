@@ -99,7 +99,7 @@ export function move(sessionId, direction) {
  * @returns {Promise<object>} Updated game state.
  */
 export function takeItem(sessionId, itemId) {
-  return requestGame('post', '/game/take', { sessionId, itemId });
+  return requestGame('post', '/game/take', { sessionId, itemId }, true);
 }
 
 /**
@@ -110,7 +110,7 @@ export function takeItem(sessionId, itemId) {
  * @returns {Promise<object>} Updated game state.
  */
 export function dropItem(sessionId, itemId) {
-  return requestGame('post', '/game/drop', { sessionId, itemId });
+  return requestGame('post', '/game/drop', { sessionId, itemId }, true);
 }
 
 /**
@@ -121,7 +121,7 @@ export function dropItem(sessionId, itemId) {
  * @returns {Promise<object>} Updated game state.
  */
 export function useItem(sessionId, itemId) {
-  return requestGame('post', '/game/use', { sessionId, itemId });
+  return requestGame('post', '/game/use', { sessionId, itemId }, true);
 }
 
 /**
@@ -145,6 +145,26 @@ export function submitPassword(sessionId, password) {
  */
 export function saveGame(token, sessionId, saveName = '自动存档') {
   return requestGame('post', '/game/save', { token, sessionId, saveName }, true);
+}
+
+/**
+ * Restarts the current level for a game session.
+ *
+ * @param {string} sessionId Game session identifier.
+ * @returns {Promise<object>} Restarted game state.
+ */
+export function restartLevel(sessionId) {
+  return requestGame('post', '/game/restart-level', { sessionId }, true);
+}
+
+/**
+ * Abandons the current adventure and ends its backend session.
+ *
+ * @param {string} sessionId Game session identifier.
+ * @returns {Promise<object>} Final abandoned game state.
+ */
+export function abandonAdventure(sessionId) {
+  return requestGame('post', '/game/abandon', { sessionId }, true);
 }
 
 /**

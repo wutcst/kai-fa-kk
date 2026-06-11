@@ -14,25 +14,54 @@ import RoomDescriptionBar from './RoomDescriptionBar.vue'
 const props = defineProps({
   gameState: {
     type: Object,
-    required: true,
+    default: null,
   },
   username: {
     type: String,
     default: '',
   },
+  actionLoading: {
+    type: Boolean,
+    default: false,
+  },
+  errorMessage: {
+    type: String,
+    default: '',
+  },
+  noticeMessage: {
+    type: String,
+    default: '',
+  },
+  itemActionLoading: {
+    type: Boolean,
+    default: false,
+  },
 })
 
-defineEmits(['logout'])
+defineEmits([
+  'exit-game',
+  'save-game',
+  'restart-level',
+  'abandon-adventure',
+  'take-item',
+  'use-item',
+  'drop-item',
+])
 
 const areRoomItemsHighlighted = ref(false)
 const dashboardScale = ref(1)
 const isBackpackOpen = ref(false)
 const showDebugHud = ref(false)
 
-const currentRoom = computed(() => props.gameState.currentRoom || props.gameState.room)
+const currentRoom = computed(() => props.gameState?.currentRoom || null)
+const currentLevel = computed(() => props.gameState?.currentLevel)
+const chapterName = computed(() => ({
+  1: '第一章：石门回声',
+  2: '第二章：月纹回廊',
+  3: '第三章：沉金王座',
+})[currentLevel.value] || '暂无章节信息')
 const inventoryItems = computed(() => (
-  props.gameState.player?.inventory
-  || props.gameState.inventory
+  props.gameState?.player?.inventory
   || []
 ))
 const roomItems = computed(() => (
@@ -40,9 +69,9 @@ const roomItems = computed(() => (
   || currentRoom.value?.visibleItems
   || []
 ))
-const statusLabel = computed(() => (props.gameState.status === 'IN_PROGRESS'
+const statusLabel = computed(() => (props.gameState?.status === 'IN_PROGRESS'
   ? '探索中'
-  : props.gameState.status))
+  : props.gameState?.status || ''))
 const roomBackground = computed(() => getRoomBackground(currentRoom.value?.id))
 const stageStyle = computed(() => ({
   '--dashboard-scale': dashboardScale.value,
@@ -89,13 +118,13 @@ onBeforeUnmount(() => {
       :style="stageStyle"
     >
       <GameHeader
-        :chapter="gameState.chapter"
-        :location="currentRoom.name"
-        :objective="gameState.objective"
+        :chapter="chapterName"
+        :location="currentRoom?.name || '暂无房间信息'"
+        :objective="gameState?.objective"
         :status="statusLabel"
         :style="rectStyle(HUD_POSITIONS.topbar)"
-        :title="gameState.title"
-        @logout="$emit('logout')"
+        :title="gameState?.title"
+        @logout="$emit('exit-game')"
       />
 
       <div
@@ -103,11 +132,11 @@ onBeforeUnmount(() => {
         :style="rectStyle(HUD_POSITIONS.playerStatus)"
       >
         <PlayerStatus
-          :current-level="gameState.currentLevel"
+          :current-level="currentLevel"
           :inventory-items="inventoryItems"
-          :password-unlocked="gameState.passwordUnlocked"
-          :player="gameState.player"
-          :status="gameState.status"
+          :password-unlocked="gameState?.passwordUnlocked"
+          :player="gameState?.player || {}"
+          :status="gameState?.status"
           :username="username"
           @open-inventory="openBackpack"
         />
@@ -116,39 +145,48 @@ onBeforeUnmount(() => {
       <ActionPanel
         :current-room="currentRoom"
         :password-prompt-open="false"
-        :password-unlocked="gameState.passwordUnlocked"
+        :password-unlocked="gameState?.passwordUnlocked"
         :room-items-highlighted="areRoomItemsHighlighted"
-        :status="gameState.status"
+        :status="gameState?.status"
         :style="rectStyle(HUD_POSITIONS.actionPanel)"
         @open-inventory="openBackpack"
         @toggle-room-items="toggleRoomItems"
       />
 
       <GameScene
+        :action-loading="itemActionLoading"
         :room="currentRoom"
         :room-items="roomItems"
         :room-items-highlighted="areRoomItemsHighlighted"
         :style="rectStyle(HUD_POSITIONS.roomItems)"
+        @take-item="$emit('take-item', $event)"
       />
 
       <BackpackModal
         v-if="isBackpackOpen"
+        :action-loading="itemActionLoading"
         :items="inventoryItems"
-        :player="gameState.player"
+        :player="gameState?.player || {}"
         @close="closeBackpack"
+        @drop-item="$emit('drop-item', $event)"
+        @use-item="$emit('use-item', $event)"
       />
 
       <RankingPanel
-        :fallback-text="gameState.currentObjectives"
-        :ranking="gameState.ranking || gameState.leaderboard || []"
+        :fallback-text="gameState?.currentObjectives"
+        :ranking="gameState?.ranking || gameState?.leaderboard || []"
         :style="rectStyle(HUD_POSITIONS.ranking)"
       />
 
       <GameLog
-        :logs="gameState.logs"
-        :message="gameState.message"
-        :status="gameState.status"
+        :action-loading="actionLoading"
+        :logs="gameState?.logs || []"
+        :message="errorMessage || noticeMessage || gameState?.message"
+        :status="gameState?.status || ''"
         :style="rectStyle(HUD_POSITIONS.log)"
+        @abandon-adventure="$emit('abandon-adventure')"
+        @restart-level="$emit('restart-level')"
+        @save-game="$emit('save-game')"
       />
 
       <RoomDescriptionBar
