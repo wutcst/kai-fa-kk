@@ -13,6 +13,8 @@ package cn.edu.whut.sept.sesame.service;
 import cn.edu.whut.sept.sesame.dto.AuthResult;
 import cn.edu.whut.sept.sesame.dto.GameSaveSummary;
 import cn.edu.whut.sept.sesame.dto.GameState;
+import cn.edu.whut.sept.sesame.dto.LeaderboardEntry;
+import cn.edu.whut.sept.sesame.dto.ShopCatalogItem;
 import cn.edu.whut.sept.sesame.model.GameSession;
 import cn.edu.whut.sept.sesame.model.GameStatus;
 import cn.edu.whut.sept.sesame.model.Item;
@@ -25,6 +27,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -71,6 +74,8 @@ public class GameService {
      * 商店中无法购买物品时使用的价格。
      */
     public static final int UNKNOWN_PRICE = -1;
+
+    private static final Map<String, Integer> SHOP_CATALOG = createShopCatalog();
 
     /**
      * 解锁宝库和最终出口所需的正确暗语。
@@ -532,6 +537,32 @@ public class GameService {
     }
 
     /**
+     * 查询当前商店阶段可购买的商品目录。
+     *
+     * @param sessionId 会话编号
+     * @return 稳定排序的商店商品目录
+     */
+    public List<ShopCatalogItem> listShopCatalog(String sessionId) {
+        requireShoppingSession(sessionId);
+        return SHOP_CATALOG.entrySet().stream()
+                .map(entry -> ShopCatalogItem.from(createItem(entry.getKey()), entry.getValue()))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 查询历史最高分排行榜。
+     *
+     * @param limit 返回条目数量上限
+     * @return 排行榜条目
+     */
+    public List<LeaderboardEntry> listLeaderboard(int limit) {
+        if (limit <= 0 || limit > 100) {
+            throw new IllegalArgumentException("排行榜数量必须在 1 到 100 之间。");
+        }
+        return gameStore.listTopHighScores(limit);
+    }
+
+    /**
      * 在商店购买指定物品。
      *
      * @param sessionId 会话编号
@@ -855,24 +886,19 @@ public class GameService {
     }
 
     private int shopPrice(String itemId) {
-        switch (itemId) {
-            case "clean-water":
-                return 10;
-            case "dry-food":
-                return 8;
-            case "stamina-potion":
-                return 18;
-            case "rope":
-                return 20;
-            case "iron-boots":
-                return 25;
-            case "lockpick":
-                return 25;
-            case "lantern":
-                return 15;
-            default:
-                return UNKNOWN_PRICE;
-        }
+        return SHOP_CATALOG.getOrDefault(itemId, UNKNOWN_PRICE);
+    }
+
+    private static Map<String, Integer> createShopCatalog() {
+        Map<String, Integer> catalog = new LinkedHashMap<>();
+        catalog.put("clean-water", 10);
+        catalog.put("dry-food", 8);
+        catalog.put("stamina-potion", 18);
+        catalog.put("rope", 20);
+        catalog.put("iron-boots", 25);
+        catalog.put("lockpick", 25);
+        catalog.put("lantern", 15);
+        return Collections.unmodifiableMap(catalog);
     }
 
     private GameSaveRecord toSaveRecord(String username, GameSession session, String saveName) {
