@@ -23,9 +23,23 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  helpOpen: {
+    type: Boolean,
+    default: false,
+  },
+  actionLoading: {
+    type: Boolean,
+    default: false,
+  },
 })
 
-const emit = defineEmits(['toggle-room-items', 'open-inventory'])
+const emit = defineEmits([
+  'back-room',
+  'toggle-help',
+  'toggle-room-items',
+  'open-inventory',
+  'open-password',
+])
 
 const ACTION_SLOTS = {
   title: { x: 0, y: 35, w: 320, h: 30 },
@@ -68,13 +82,6 @@ const availableDirections = computed(() => (
     ? props.currentRoom.exitDirections
     : []
 ))
-const roomItems = computed(() => props.currentRoom.items || props.currentRoom.visibleItems || [])
-const canInputPassword = computed(() => (
-  isPlaying.value
-  && props.currentRoom.requiresPassword
-  && !props.passwordUnlocked
-))
-
 const actionRows = computed(() => [
   {
     id: 'return',
@@ -83,16 +90,19 @@ const actionRows = computed(() => [
     rowSlot: ACTION_SLOTS.row1,
     labelSlot: ACTION_SLOTS.label1,
     keySlot: ACTION_SLOTS.key1,
-    disabled: !isPlaying.value,
+    disabled: !isPlaying.value || props.actionLoading,
+    onClick: () => emit('back-room'),
   },
   {
-    id: 'home',
-    label: '回到初始房间',
+    id: 'help',
+    label: '操作帮助',
     key: 'H',
     rowSlot: ACTION_SLOTS.row2,
     labelSlot: ACTION_SLOTS.label2,
     keySlot: ACTION_SLOTS.key2,
-    disabled: !isPlaying.value,
+    disabled: false,
+    active: props.helpOpen,
+    onClick: () => emit('toggle-help'),
   },
   {
     id: 'items',
@@ -101,7 +111,7 @@ const actionRows = computed(() => [
     rowSlot: ACTION_SLOTS.row3,
     labelSlot: ACTION_SLOTS.label3,
     keySlot: ACTION_SLOTS.key3,
-    disabled: !isPlaying.value || !roomItems.value.length,
+    disabled: false,
     active: props.roomItemsHighlighted,
     onClick: () => emit('toggle-room-items'),
   },
@@ -117,14 +127,15 @@ const actionRows = computed(() => [
   },
   {
     id: 'password',
-    label: props.passwordUnlocked ? '暗语已解锁' : '输入暗语',
+    label: '输入暗语',
     key: 'P',
     rowSlot: ACTION_SLOTS.row5,
     labelSlot: ACTION_SLOTS.label5,
     keySlot: ACTION_SLOTS.key5,
-    disabled: !canInputPassword.value,
+    disabled: !isPlaying.value || props.actionLoading,
     active: props.passwordPromptOpen,
-    available: canInputPassword.value && !props.passwordPromptOpen,
+    available: props.currentRoom.id === 'mechanism-gallery' && !props.passwordUnlocked,
+    onClick: () => emit('open-password'),
   },
 ])
 
@@ -171,6 +182,7 @@ const directions = [
         }"
         :disabled="action.disabled"
         :style="slotStyle(action.rowSlot)"
+        :aria-keyshortcuts="action.key"
         @click="action.onClick?.()"
       />
       <span
