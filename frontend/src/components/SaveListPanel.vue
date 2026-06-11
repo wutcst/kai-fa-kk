@@ -2,13 +2,21 @@
 import SaveCard from './SaveCard.vue'
 
 defineProps({
+  errorMessage: {
+    type: String,
+    default: '',
+  },
+  loading: {
+    type: Boolean,
+    default: false,
+  },
   saves: {
     type: Array,
     required: true,
   },
 })
 
-defineEmits(['close', 'start-new'])
+defineEmits(['close', 'load-save'])
 </script>
 
 <template>
@@ -24,7 +32,7 @@ defineEmits(['close', 'start-new'])
         <h2 id="save-list-title">
           历史存档
         </h2>
-        <p>选择一段旧日卷宗继续前行。当前仅展示 mock 存档，后续将在 Issue #12 接入真实存档接口。</p>
+        <p>选择一段旧日卷宗继续前行。</p>
       </div>
       <button
         type="button"
@@ -37,7 +45,22 @@ defineEmits(['close', 'start-new'])
     </div>
 
     <div
-      v-if="saves.length"
+      v-if="loading"
+      class="save-empty"
+    >
+      <span>正在读取存档列表...</span>
+    </div>
+
+    <div
+      v-else-if="errorMessage"
+      class="save-empty"
+      role="alert"
+    >
+      <span>{{ errorMessage }}</span>
+    </div>
+
+    <div
+      v-else-if="saves.length"
       class="save-list"
     >
       <SaveCard
@@ -46,7 +69,7 @@ defineEmits(['close', 'start-new'])
         :save="save"
         action-label="读取存档"
         show-action
-        @load="$emit('start-new')"
+        @load="$emit('load-save', $event)"
       />
     </div>
 
@@ -54,14 +77,8 @@ defineEmits(['close', 'start-new'])
       v-else
       class="save-empty"
     >
-      <span>暂无可读取存档</span>
-      <p>你还没有保存过探险进度。可以开始一段新的秘窟探索。</p>
-      <button
-        type="button"
-        @click="$emit('start-new')"
-      >
-        开始新游戏
-      </button>
+      <span>暂无存档</span>
+      <p>你还没有保存过探险进度。</p>
     </div>
   </section>
 </template>
