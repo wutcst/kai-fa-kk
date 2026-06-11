@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { getUiAsset } from '../utils/assetMap'
+import { getRoomName } from '../utils/roomNameMap'
 
 const props = defineProps({
   currentRoom: {
@@ -31,6 +32,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  moveLoading: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits([
@@ -39,6 +44,7 @@ const emit = defineEmits([
   'toggle-room-items',
   'open-inventory',
   'open-password',
+  'move-player',
 ])
 
 const ACTION_SLOTS = {
@@ -77,11 +83,24 @@ const slotStyle = (slot) => ({
 
 const actionFrame = computed(() => getUiAsset('actionPanelFrame'))
 const isPlaying = computed(() => props.status === 'IN_PROGRESS' || props.status === '探索中')
-const availableDirections = computed(() => (
-  Array.isArray(props.currentRoom.exitDirections)
-    ? props.currentRoom.exitDirections
+const availableDirections = computed(() => {
+  if (Array.isArray(props.currentRoom.exitDirections)) {
+    return props.currentRoom.exitDirections
+  }
+
+  const exits = props.currentRoom.exits
+  return exits && typeof exits === 'object' && !Array.isArray(exits)
+    ? Object.keys(exits)
     : []
-))
+})
+const getDirectionTitle = (direction) => {
+  if (!availableDirections.value.includes(direction)) {
+    return '当前房间没有这个方向的出口'
+  }
+
+  const targetRoomId = props.currentRoom.exits?.[direction]
+  return targetRoomId ? `前往：${getRoomName(targetRoomId)}` : `向${direction}移动`
+}
 const actionRows = computed(() => [
   {
     id: 'return',
@@ -214,10 +233,13 @@ const directions = [
       type="button"
       :class="{
         'action-panel-template__dir--disabled': !isPlaying
+          || moveLoading
           || !availableDirections.includes(direction.direction),
       }"
-      :disabled="!isPlaying || !availableDirections.includes(direction.direction)"
+      :disabled="!isPlaying || moveLoading || !availableDirections.includes(direction.direction)"
       :style="slotStyle(direction.slot)"
+      :title="getDirectionTitle(direction.direction)"
+      @click="$emit('move-player', direction.direction)"
     >
       {{ direction.label }}
     </button>
