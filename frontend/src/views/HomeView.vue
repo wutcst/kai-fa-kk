@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { getApiErrorMessage, login, register } from '../api/authApi'
 import {
   abandonAdventure,
+  backToPreviousRoom,
   dropItem,
   getGameApiErrorMessage,
   listGameSaves,
@@ -11,6 +12,7 @@ import {
   restartLevel,
   saveGame,
   startGame,
+  submitPassword,
   takeItem,
   useItem,
 } from '../api/gameApi'
@@ -36,6 +38,7 @@ const sessionId = ref(getSessionValue(SESSION_ID_KEY))
 const gameLoading = ref(false)
 const gameActionLoading = ref(false)
 const itemActionLoading = ref(false)
+const shortcutActionLoading = ref(false)
 const gameErrorMessage = ref('')
 const gameNoticeMessage = ref('')
 const saves = ref([])
@@ -208,8 +211,8 @@ async function handleAbandonAdventure() {
     sessionId.value = ''
     gameState.value = null
     sessionStorage.removeItem(SESSION_ID_KEY)
-    await loadSaveSummaries()
     currentView.value = 'start-menu'
+    void loadSaveSummaries()
   } catch (error) {
     gameErrorMessage.value = getGameApiErrorMessage(error)
   } finally {
@@ -253,6 +256,63 @@ function handleUseItem(itemId) {
 
 function handleDropItem(itemId) {
   return runItemAction(itemId, dropItem)
+}
+
+async function runShortcutAction(action, ...args) {
+  if (!sessionId.value) {
+    gameErrorMessage.value = '当前没有可操作的游戏会话'
+    return
+  }
+
+  shortcutActionLoading.value = true
+  gameErrorMessage.value = ''
+  gameNoticeMessage.value = ''
+
+  try {
+    const result = await action(sessionId.value, ...args)
+    enterLoadedGame(result)
+    gameNoticeMessage.value = result?.message || ''
+  } catch (error) {
+    gameErrorMessage.value = getGameApiErrorMessage(error)
+  } finally {
+    shortcutActionLoading.value = false
+  }
+}
+
+function handleBackRoom() {
+  return runShortcutAction(backToPreviousRoom)
+}
+
+async function handleSubmitPassword(password) {
+  if (!password?.trim()) {
+    gameErrorMessage.value = '暗语不能为空'
+    return
+  }
+
+  if (!sessionId.value) {
+    gameErrorMessage.value = '当前没有可操作的游戏会话'
+    return
+  }
+
+  shortcutActionLoading.value = true
+  gameErrorMessage.value = ''
+  gameNoticeMessage.value = ''
+
+  try {
+    const result = await submitPassword(sessionId.value, password.trim())
+    enterLoadedGame(result)
+    gameNoticeMessage.value = result?.message
+      || (result?.passwordUnlocked ? '最终石门已解锁' : '')
+  } catch (error) {
+    gameErrorMessage.value = getGameApiErrorMessage(error)
+  } finally {
+    shortcutActionLoading.value = false
+  }
+}
+
+function handleShortcutNotice(message) {
+  gameErrorMessage.value = ''
+  gameNoticeMessage.value = message
 }
 
 async function continueLatestSave() {
@@ -380,12 +440,16 @@ onMounted(() => {
       :game-state="gameState"
       :item-action-loading="itemActionLoading"
       :notice-message="gameNoticeMessage"
+      :shortcut-loading="shortcutActionLoading"
       :username="username"
       @abandon-adventure="handleAbandonAdventure"
+      @back-room="handleBackRoom"
       @drop-item="handleDropItem"
       @exit-game="exitGame"
       @restart-level="handleRestartLevel"
       @save-game="handleSaveGame"
+      @shortcut-notice="handleShortcutNotice"
+      @submit-password="handleSubmitPassword"
       @take-item="handleTakeItem"
       @use-item="handleUseItem"
     />
