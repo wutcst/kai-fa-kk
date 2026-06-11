@@ -208,3 +208,57 @@ export async function listGameSaves(token) {
   const saves = await requestGame('get', '/game/saves', { token });
   return Array.isArray(saves) ? saves : [];
 }
+
+/**
+ * Lists public leaderboard entries.
+ *
+ * @param {number} limit Maximum number of entries to return.
+ * @returns {Promise<object[]>} Leaderboard entries.
+ */
+export async function getLeaderboard(limit = 3) {
+  const entries = await requestGame('get', '/game/leaderboard', { limit });
+  return Array.isArray(entries) ? entries : [];
+}
+
+/**
+ * Lists the catalog available for the current shopping session.
+ *
+ * @param {string} sessionId Game session identifier.
+ * @returns {Promise<object[]>} Shop catalog entries.
+ */
+export async function getShopCatalog(sessionId) {
+  const catalog = await requestGame('get', '/game/shop/catalog', { sessionId });
+  return Array.isArray(catalog) ? catalog : [];
+}
+
+/**
+ * Buys an item from the current shop.
+ *
+ * @param {string} sessionId Game session identifier.
+ * @param {string} itemId Catalog item identifier.
+ * @returns {Promise<object>} Updated game state.
+ */
+export function buyShopItem(sessionId, itemId) {
+  return requestGame('post', '/game/shop/buy', { sessionId, itemId }, true);
+}
+
+/**
+ * Sells a treasure from the player's inventory.
+ *
+ * @param {string} sessionId Game session identifier.
+ * @param {string} itemId Inventory item identifier.
+ * @returns {Promise<object>} Updated game state.
+ */
+export function sellShopItem(sessionId, itemId) {
+  return requestGame('post', '/game/shop/sell', { sessionId, itemId }, true);
+}
+
+/**
+ * Leaves the current shop and continues to the next level.
+ *
+ * @param {string} sessionId Game session identifier.
+ * @returns {Promise<object>} Updated game state.
+ */
+export function continueAdventure(sessionId) {
+  return requestGame('post', '/game/shop/continue', { sessionId }, true);
+}

@@ -1,17 +1,22 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { getApiErrorMessage, login, register } from '../api/authApi'
 import {
   abandonAdventure,
   backToPreviousRoom,
+  buyShopItem,
+  continueAdventure,
   dropItem,
   getGameApiErrorMessage,
+  getLeaderboard,
+  getShopCatalog,
   listGameSaves,
   loadLatestSave,
   loadSave,
   movePlayer,
   restartLevel,
   saveGame,
+  sellShopItem,
   startGame,
   submitPassword,
   takeItem,
@@ -46,6 +51,13 @@ const gameNoticeMessage = ref('')
 const saves = ref([])
 const saveLoading = ref(false)
 const saveErrorMessage = ref('')
+const leaderboard = ref([])
+const leaderboardLoading = ref(false)
+const leaderboardErrorMessage = ref('')
+const shopCatalog = ref([])
+const shopLoading = ref(false)
+const shopActionLoading = ref(false)
+const shopErrorMessage = ref('')
 const currentView = ref(authToken.value ? 'start-menu' : 'auth')
 
 function enterStartMenu() {
@@ -57,6 +69,16 @@ function exitGame() {
   currentView.value = 'start-menu'
   gameErrorMessage.value = ''
   gameNoticeMessage.value = ''
+  void loadSaveSummaries()
+}
+
+function returnResultToStartMenu() {
+  sessionId.value = ''
+  gameState.value = null
+  gameErrorMessage.value = ''
+  gameNoticeMessage.value = ''
+  sessionStorage.removeItem(SESSION_ID_KEY)
+  currentView.value = 'start-menu'
   void loadSaveSummaries()
 }
 
@@ -433,7 +455,107 @@ async function loadSaveSummaries() {
   }
 }
 
+async function loadLeaderboard() {
+  leaderboardLoading.value = true
+  leaderboardErrorMessage.value = ''
+
+  try {
+    leaderboard.value = await getLeaderboard(3)
+  } catch (error) {
+    leaderboard.value = []
+    leaderboardErrorMessage.value = getGameApiErrorMessage(error)
+  } finally {
+    leaderboardLoading.value = false
+  }
+}
+
+async function loadShopCatalog() {
+  if (!sessionId.value || gameState.value?.status !== 'SHOPPING') {
+    shopCatalog.value = []
+    return
+  }
+
+  shopLoading.value = true
+  shopErrorMessage.value = ''
+
+  try {
+    shopCatalog.value = await getShopCatalog(sessionId.value)
+  } catch (error) {
+    shopCatalog.value = []
+    shopErrorMessage.value = getGameApiErrorMessage(error)
+  } finally {
+    shopLoading.value = false
+  }
+}
+
+async function runShopAction(action, itemId) {
+  if (!sessionId.value) {
+    shopErrorMessage.value = '当前没有可操作的游戏会话'
+    return
+  }
+
+  if (shopActionLoading.value) return
+
+  shopActionLoading.value = true
+  shopErrorMessage.value = ''
+  gameErrorMessage.value = ''
+  gameNoticeMessage.value = ''
+
+  try {
+    const result = itemId
+      ? await action(sessionId.value, itemId)
+      : await action(sessionId.value)
+    enterLoadedGame(result)
+    gameNoticeMessage.value = result?.message || ''
+  } catch (error) {
+    shopErrorMessage.value = getGameApiErrorMessage(error)
+  } finally {
+    shopActionLoading.value = false
+  }
+}
+
+function handleBuyShopItem(itemId) {
+  return runShopAction(buyShopItem, itemId)
+}
+
+function handleSellShopItem(itemId) {
+  return runShopAction(sellShopItem, itemId)
+}
+
+function handleContinueAdventure() {
+  return runShopAction(continueAdventure)
+}
+
+watch(
+  () => gameState.value?.status,
+  (status, previousStatus) => {
+    if (status === 'WON' && previousStatus !== 'WON') {
+      void loadLeaderboard()
+    }
+  },
+)
+
+watch(
+  () => [gameState.value?.status, sessionId.value],
+  ([status, currentSessionId], [previousStatus, previousSessionId] = []) => {
+    if (
+      status === 'SHOPPING'
+      && currentSessionId
+      && (previousStatus !== 'SHOPPING' || previousSessionId !== currentSessionId)
+    ) {
+      void loadShopCatalog()
+      return
+    }
+
+    if (status !== 'SHOPPING') {
+      shopCatalog.value = []
+      shopErrorMessage.value = ''
+    }
+  },
+)
+
 onMounted(() => {
+  void loadLeaderboard()
   if (currentView.value === 'start-menu') {
     void loadSaveSummaries()
   }
@@ -469,9 +591,16 @@ onMounted(() => {
       :error-message="gameErrorMessage"
       :game-state="gameState"
       :item-action-loading="itemActionLoading"
+      :leaderboard="leaderboard"
+      :leaderboard-error-message="leaderboardErrorMessage"
+      :leaderboard-loading="leaderboardLoading"
       :move-loading="moveLoading"
       :notice-message="gameNoticeMessage"
       :shortcut-loading="shortcutActionLoading"
+      :shop-action-loading="shopActionLoading"
+      :shop-catalog="shopCatalog"
+      :shop-error-message="shopErrorMessage"
+      :shop-loading="shopLoading"
       :username="username"
       @abandon-adventure="handleAbandonAdventure"
       @back-room="handleBackRoom"
@@ -479,9 +608,14 @@ onMounted(() => {
       @exit-game="exitGame"
       @move-player="handleMovePlayer"
       @restart-level="handleRestartLevel"
+      @return-start-menu="returnResultToStartMenu"
       @save-game="handleSaveGame"
+      @buy-shop-item="handleBuyShopItem"
+      @continue-adventure="handleContinueAdventure"
+      @sell-shop-item="handleSellShopItem"
       @shortcut-notice="handleShortcutNotice"
       @submit-password="handleSubmitPassword"
+      @start-new-game="startNewGame"
       @take-item="handleTakeItem"
       @use-item="handleUseItem"
     />

@@ -7,9 +7,13 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
-  fallbackText: {
+  loading: {
+    type: Boolean,
+    default: false,
+  },
+  errorMessage: {
     type: String,
-    default: '探索当前房间，管理资源，寻找暗语线索。后续排行榜将在后续阶段接入。',
+    default: '',
   },
 })
 
@@ -45,11 +49,15 @@ const slotStyle = (slot) => ({
 
 const rankingFrame = computed(() => getUiAsset('rankingPanelFrame'))
 const hasRankingData = computed(() => props.ranking.length > 0)
+const fallbackText = computed(() => {
+  if (props.loading) return '排行榜加载中...'
+  if (props.errorMessage) return '排行榜暂时无法加载'
+  return '暂无排行榜数据'
+})
 const visibleRanking = computed(() => props.ranking.slice(0, 3).map((entry, index) => ({
   rank: entry.rank ?? index + 1,
-  playerName: entry.playerName || entry.name || '寻宝者',
-  score: entry.score ?? entry.finalScore ?? 0,
-  current: Boolean(entry.current),
+  playerName: entry.username || '寻宝者',
+  score: entry.score ?? 0,
   rowSlot: RANKING_SLOTS[`row${index + 1}`],
   badgeSlot: RANKING_SLOTS[`badge${index + 1}`],
   nameSlot: RANKING_SLOTS[`name${index + 1}`],
@@ -121,7 +129,7 @@ const visibleRanking = computed(() => props.ranking.slice(0, 3).map((entry, inde
         class="ranking-panel-template__title"
         :style="slotStyle(RANKING_SLOTS.fallbackTitle)"
       >
-        当前目标
+        探险排行
       </div>
       <p
         class="ranking-panel-template__fallback-text"

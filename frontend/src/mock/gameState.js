@@ -319,26 +319,6 @@ export const mockGameState = {
       type: 'normal',
     },
   ],
-  ranking: [
-    {
-      rank: 1,
-      playerName: '夜行者',
-      score: 1180,
-      current: false,
-    },
-    {
-      rank: 2,
-      playerName: '寻宝者',
-      score: 860,
-      current: true,
-    },
-    {
-      rank: 3,
-      playerName: '火把守望',
-      score: 730,
-      current: false,
-    },
-  ],
   actions: {
     directionActions: [
       {
