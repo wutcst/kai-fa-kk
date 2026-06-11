@@ -11,9 +11,13 @@ const props = defineProps({
     type: Object,
     required: true,
   },
+  actionLoading: {
+    type: Boolean,
+    default: false,
+  },
 })
 
-defineEmits(['close'])
+defineEmits(['close', 'use-item', 'drop-item'])
 
 const itemFilters = [
   { key: 'ALL', label: '全部', types: [] },
@@ -140,15 +144,25 @@ const filteredItems = computed(() => {
           </p>
 
           <div class="inventory-item-card__value">
-            <span>价值</span>
-            <strong>{{ getItemValue(item) }}</strong>
+            <span v-if="item.staminaEffect > 0">恢复体力 <strong>{{ item.staminaEffect }}</strong></span>
+            <span v-if="item.maxWeightEffect > 0">增加负重 <strong>{{ item.maxWeightEffect }}</strong></span>
+            <span v-if="getItemValue(item) > 0">价值 <strong>{{ getItemValue(item) }}</strong></span>
+            <span v-if="!item.staminaEffect && !item.maxWeightEffect && !getItemValue(item)">无直接效果</span>
           </div>
 
           <div class="inventory-item-card__actions">
-            <button type="button">
+            <button
+              type="button"
+              :disabled="actionLoading"
+              @click="$emit('use-item', item.id)"
+            >
               使用
             </button>
-            <button type="button">
+            <button
+              type="button"
+              :disabled="actionLoading"
+              @click="$emit('drop-item', item.id)"
+            >
               丢弃
             </button>
           </div>
@@ -159,7 +173,7 @@ const filteredItems = computed(() => {
         v-else
         class="hud-empty inventory-modal__empty"
       >
-        当前分类下暂无物品。
+        {{ items.length ? '当前分类下暂无物品。' : '背包为空。' }}
       </p>
     </section>
   </div>

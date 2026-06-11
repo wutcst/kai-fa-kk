@@ -15,7 +15,13 @@ const props = defineProps({
     type: String,
     required: true,
   },
+  actionLoading: {
+    type: Boolean,
+    default: false,
+  },
 })
+
+defineEmits(['save-game', 'restart-level', 'abandon-adventure'])
 
 const LOG_SLOTS = {
   title: { x: -20, y: 38, w: 360, h: 32 },
@@ -106,21 +112,27 @@ const logFrame = computed(() => getUiAsset('logPanelFrame'))
     <button
       class="game-log-template__button"
       type="button"
+      :disabled="actionLoading"
       :style="slotStyle(LOG_SLOTS.saveButton)"
+      @click="$emit('save-game')"
     >
       保存
     </button>
     <button
       class="game-log-template__button"
       type="button"
+      :disabled="actionLoading"
       :style="slotStyle(LOG_SLOTS.restartButton)"
+      @click="$emit('restart-level')"
     >
       重开
     </button>
     <button
       class="game-log-template__button game-log-template__button--quit"
       type="button"
+      :disabled="actionLoading"
       :style="slotStyle(LOG_SLOTS.quitButton)"
+      @click="$emit('abandon-adventure')"
     >
       放弃
     </button>

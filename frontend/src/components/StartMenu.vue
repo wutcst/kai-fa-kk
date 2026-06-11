@@ -5,6 +5,22 @@ import SaveCard from './SaveCard.vue'
 import SaveListPanel from './SaveListPanel.vue'
 
 const props = defineProps({
+  errorMessage: {
+    type: String,
+    default: '',
+  },
+  loading: {
+    type: Boolean,
+    default: false,
+  },
+  saveErrorMessage: {
+    type: String,
+    default: '',
+  },
+  saveLoading: {
+    type: Boolean,
+    default: false,
+  },
   saves: {
     type: Array,
     required: true,
@@ -15,11 +31,12 @@ const props = defineProps({
   },
 })
 
-defineEmits(['logout', 'start-new'])
+const emit = defineEmits(['continue-latest', 'load-save', 'logout', 'open-saves', 'start-new'])
 
 const isArchiveOpen = ref(false)
 
 const latestSave = computed(() => props.saves[0] || null)
+const displayedMessage = computed(() => props.errorMessage || props.saveErrorMessage)
 const startMenuBackground = computed(() => getPageBackground('start-menu'))
 const startMenuStyle = computed(() => ({
   '--start-menu-background': `url(${startMenuBackground.value})`,
@@ -27,10 +44,23 @@ const startMenuStyle = computed(() => ({
 
 const openArchive = () => {
   isArchiveOpen.value = true
+  emit('open-saves')
 }
 
 const closeArchive = () => {
   isArchiveOpen.value = false
+}
+
+const startNewGame = () => {
+  emit('start-new')
+}
+
+const continueLatestSave = () => {
+  emit('continue-latest')
+}
+
+const loadSave = (saveId) => {
+  emit('load-save', saveId)
 }
 </script>
 
@@ -47,22 +77,30 @@ const closeArchive = () => {
           探险入口
         </h1>
         <p>欢迎回来，{{ username }}。开启新的探险，或沿着旧日卷宗继续前行。</p>
+        <p
+          v-if="displayedMessage"
+          class="start-menu__error"
+          role="alert"
+        >
+          {{ displayedMessage }}
+        </p>
 
         <div class="start-menu__buttons">
           <button
             type="button"
             class="start-menu-button start-menu-button--primary"
-            @click="$emit('start-new')"
+            :disabled="loading"
+            @click="startNewGame"
           >
-            开始新游戏
+            {{ loading ? '正在开启秘窟...' : '开始新游戏' }}
           </button>
           <button
-            v-if="latestSave"
             type="button"
             class="start-menu-button start-menu-button--continue"
-            @click="$emit('start-new')"
+            :disabled="saveLoading || !latestSave"
+            @click="continueLatestSave"
           >
-            继续最近存档
+            {{ saveLoading ? '正在读取存档...' : '继续最近存档' }}
           </button>
           <button
             type="button"
@@ -87,6 +125,18 @@ const closeArchive = () => {
           label="最近卷宗"
           variant="recent"
         />
+        <div
+          v-else
+          class="start-menu__recent-save save-empty"
+        >
+          <span>{{ saveLoading ? '正在读取存档...' : '暂无存档' }}</span>
+          <p v-if="saveErrorMessage">
+            {{ saveErrorMessage }}
+          </p>
+          <p v-else-if="!saveLoading">
+            当前账号还没有保存过探险进度。
+          </p>
+        </div>
       </section>
     </div>
 
@@ -97,9 +147,11 @@ const closeArchive = () => {
       @click.self="closeArchive"
     >
       <SaveListPanel
+        :error-message="saveErrorMessage"
+        :loading="saveLoading"
         :saves="saves"
         @close="closeArchive"
-        @start-new="$emit('start-new')"
+        @load-save="loadSave"
       />
     </div>
   </section>
