@@ -1942,8 +1942,7 @@ button {
 .ranking-panel-template__row,
 .ranking-panel-template__rank,
 .ranking-panel-template__name,
-.ranking-panel-template__score,
-.ranking-panel-template__fallback-text {
+.ranking-panel-template__score {
   position: absolute;
   z-index: 1;
   display: flex;
@@ -2022,14 +2021,38 @@ button {
     0 0 10px rgba(80, 210, 255, 0.28);
 }
 
-.ranking-panel-template__fallback-text {
+.ranking-panel__state {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  box-sizing: border-box;
+  align-items: center;
   justify-content: center;
-  margin: 0;
   color: #f1dfbf;
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 800;
   line-height: 1.5;
   text-align: center;
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.9),
+    0 0 8px rgba(248, 210, 125, 0.14);
+  pointer-events: none;
+}
+
+.ranking-panel__loading {
+  color: #d7edf0;
+}
+
+.ranking-panel__empty {
+  color: #d7c49b;
+}
+
+.ranking-panel__error {
+  color: #efb49e;
+}
+
+.ranking-panel__state span {
+  max-width: 240px;
 }
 
 
