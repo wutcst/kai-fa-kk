@@ -60,6 +60,7 @@ export function adaptGameState(rawState) {
     ...rawState,
     player,
     currentRoom,
+    canSubmitPassword: Boolean(rawState.canSubmitPassword),
     currentObjectives: getCurrentObjective(rawState.logs),
   }
 }
