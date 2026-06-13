@@ -6,6 +6,7 @@ export const DASHBOARD_BASE = {
 export const HUD_POSITIONS = {
   topbar: { x: 490, y: 16, w: 920, h: 90 },
   playerStatus: { x: 42, y: 60, w: 320, h: 395 },
+  mapButton: { x: 374, y: 70, w: 90, h: 42 },
   actionPanel: { x: 42, y: 468, w: 320, h: 500 },
   ranking: { x: 1524, y: 60, w: 320, h: 295 },
   log: { x: 1524, y: 388, w: 320, h: 580 },
