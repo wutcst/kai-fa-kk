@@ -38,6 +38,7 @@ public class GameSession {
     private int finalScore;
     private int highScore;
     private boolean passwordUnlocked;
+    private int wrongPasswordAttempts;
     private GameStatus status;
 
     /**
@@ -78,6 +79,7 @@ public class GameSession {
         this.finalScore = 0;
         this.highScore = 0;
         this.passwordUnlocked = false;
+        this.wrongPasswordAttempts = 0;
     }
 
     /**
@@ -317,6 +319,29 @@ public class GameSession {
      */
     public void setPasswordUnlocked(boolean passwordUnlocked) {
         this.passwordUnlocked = passwordUnlocked;
+    }
+
+    /**
+     * 获取当前会话连续输入错误暗语的次数。
+     *
+     * @return 错误暗语次数
+     */
+    public int getWrongPasswordAttempts() {
+        return wrongPasswordAttempts;
+    }
+
+    /**
+     * 记录一次错误暗语输入。
+     */
+    public void incrementWrongPasswordAttempts() {
+        wrongPasswordAttempts++;
+    }
+
+    /**
+     * 清空错误暗语次数。
+     */
+    public void resetWrongPasswordAttempts() {
+        wrongPasswordAttempts = 0;
     }
 
     /**
