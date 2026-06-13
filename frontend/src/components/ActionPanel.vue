@@ -8,7 +8,7 @@ const props = defineProps({
     type: Object,
     required: true,
   },
-  passwordUnlocked: {
+  canSubmitPassword: {
     type: Boolean,
     default: false,
   },
@@ -101,62 +101,69 @@ const getDirectionTitle = (direction) => {
   const targetRoomId = props.currentRoom.exits?.[direction]
   return targetRoomId ? `前往：${getRoomName(targetRoomId)}` : `向${direction}移动`
 }
-const actionRows = computed(() => [
-  {
-    id: 'return',
-    label: '返回上一房间',
-    key: 'R',
-    rowSlot: ACTION_SLOTS.row1,
-    labelSlot: ACTION_SLOTS.label1,
-    keySlot: ACTION_SLOTS.key1,
-    disabled: !isPlaying.value || props.actionLoading,
-    onClick: () => emit('back-room'),
-  },
-  {
-    id: 'help',
-    label: '操作帮助',
-    key: 'H',
-    rowSlot: ACTION_SLOTS.row2,
-    labelSlot: ACTION_SLOTS.label2,
-    keySlot: ACTION_SLOTS.key2,
-    disabled: false,
-    active: props.helpOpen,
-    onClick: () => emit('toggle-help'),
-  },
-  {
-    id: 'items',
-    label: '查看房间物品',
-    key: 'Q',
-    rowSlot: ACTION_SLOTS.row3,
-    labelSlot: ACTION_SLOTS.label3,
-    keySlot: ACTION_SLOTS.key3,
-    disabled: false,
-    active: props.roomItemsHighlighted,
-    onClick: () => emit('toggle-room-items'),
-  },
-  {
-    id: 'bag',
-    label: '打开背包',
-    key: 'E',
-    rowSlot: ACTION_SLOTS.row4,
-    labelSlot: ACTION_SLOTS.label4,
-    keySlot: ACTION_SLOTS.key4,
-    disabled: false,
-    onClick: () => emit('open-inventory'),
-  },
-  {
-    id: 'password',
-    label: '输入暗语',
-    key: 'P',
-    rowSlot: ACTION_SLOTS.row5,
-    labelSlot: ACTION_SLOTS.label5,
-    keySlot: ACTION_SLOTS.key5,
-    disabled: !isPlaying.value || props.actionLoading,
-    active: props.passwordPromptOpen,
-    available: props.currentRoom.id === 'mechanism-gallery' && !props.passwordUnlocked,
-    onClick: () => emit('open-password'),
-  },
-])
+const actionRows = computed(() => {
+  const rows = [
+    {
+      id: 'return',
+      label: '返回上一房间',
+      key: 'R',
+      rowSlot: ACTION_SLOTS.row1,
+      labelSlot: ACTION_SLOTS.label1,
+      keySlot: ACTION_SLOTS.key1,
+      disabled: !isPlaying.value || props.actionLoading,
+      onClick: () => emit('back-room'),
+    },
+    {
+      id: 'help',
+      label: '操作帮助',
+      key: 'H',
+      rowSlot: ACTION_SLOTS.row2,
+      labelSlot: ACTION_SLOTS.label2,
+      keySlot: ACTION_SLOTS.key2,
+      disabled: false,
+      active: props.helpOpen,
+      onClick: () => emit('toggle-help'),
+    },
+    {
+      id: 'items',
+      label: '查看房间物品',
+      key: 'Q',
+      rowSlot: ACTION_SLOTS.row3,
+      labelSlot: ACTION_SLOTS.label3,
+      keySlot: ACTION_SLOTS.key3,
+      disabled: false,
+      active: props.roomItemsHighlighted,
+      onClick: () => emit('toggle-room-items'),
+    },
+    {
+      id: 'bag',
+      label: '打开背包',
+      key: 'E',
+      rowSlot: ACTION_SLOTS.row4,
+      labelSlot: ACTION_SLOTS.label4,
+      keySlot: ACTION_SLOTS.key4,
+      disabled: false,
+      onClick: () => emit('open-inventory'),
+    },
+  ]
+
+  if (props.canSubmitPassword) {
+    rows.push({
+      id: 'password',
+      label: '输入暗语',
+      key: 'P',
+      rowSlot: ACTION_SLOTS.row5,
+      labelSlot: ACTION_SLOTS.label5,
+      keySlot: ACTION_SLOTS.key5,
+      disabled: !isPlaying.value || props.actionLoading,
+      active: props.passwordPromptOpen,
+      available: true,
+      onClick: () => emit('open-password'),
+    })
+  }
+
+  return rows
+})
 
 const directions = [
   { direction: 'north', label: '北', slot: ACTION_SLOTS.north },

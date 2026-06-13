@@ -13,6 +13,7 @@ import ActionPanel from './ActionPanel.vue'
 import BackpackModal from './BackpackModal.vue'
 import GameHeader from './GameHeader.vue'
 import GameLog from './GameLog.vue'
+import GameMapModal from './GameMapModal.vue'
 import GameNoticeModal from './GameNoticeModal.vue'
 import GameResultModal from './GameResultModal.vue'
 import GameScene from './GameScene.vue'
@@ -106,6 +107,7 @@ const emit = defineEmits([
 const areRoomItemsHighlighted = ref(false)
 const dashboardScale = ref(1)
 const isBackpackOpen = ref(false)
+const isMapModalOpen = ref(false)
 const isHelpOpen = ref(false)
 const isPasswordOpen = ref(false)
 const passwordInput = ref('')
@@ -119,6 +121,7 @@ const currentLevel = computed(() => props.gameState?.currentLevel)
 const isPlaying = computed(() => props.gameState?.status === 'IN_PROGRESS')
 const isShopping = computed(() => props.gameState?.status === 'SHOPPING')
 const isTerminal = computed(() => ['WON', 'FAILED'].includes(props.gameState?.status))
+const canSubmitPassword = computed(() => Boolean(props.gameState?.canSubmitPassword))
 const chapterName = computed(() => ({
   1: '第一章：石门回声',
   2: '第二章：月纹回廊',
@@ -128,6 +131,7 @@ const inventoryItems = computed(() => (
   props.gameState?.player?.inventory
   || []
 ))
+const hasOldMap = computed(() => inventoryItems.value.some((item) => item?.id === 'old-map'))
 const roomItems = computed(() => (
   currentRoom.value?.items
   || currentRoom.value?.visibleItems
@@ -220,6 +224,17 @@ const closeBackpack = () => {
   isBackpackOpen.value = false
 }
 
+const openMapModal = () => {
+  if (!hasOldMap.value) return
+
+  isBackpackOpen.value = false
+  isMapModalOpen.value = true
+}
+
+const closeMapModal = () => {
+  isMapModalOpen.value = false
+}
+
 const toggleHelp = () => {
   isHelpOpen.value = !isHelpOpen.value
 }
@@ -229,12 +244,7 @@ const closeHelp = () => {
 }
 
 const openPassword = () => {
-  if (!isPlaying.value || props.shortcutLoading) return
-
-  if (currentRoom.value?.id !== 'mechanism-gallery') {
-    emit('shortcut-notice', '这里没有可以输入暗语的机关')
-    return
-  }
+  if (!isPlaying.value || props.shortcutLoading || !canSubmitPassword.value) return
 
   passwordError.value = ''
   isPasswordOpen.value = true
@@ -283,6 +293,7 @@ const requestMovePlayer = (direction) => {
   if (
     props.moveLoading
     || isBackpackOpen.value
+    || isMapModalOpen.value
     || isHelpOpen.value
     || isPasswordOpen.value
   ) {
@@ -307,6 +318,7 @@ const handleShortcutKey = (event) => {
     return
   }
 
+  if (isMapModalOpen.value) return
   if (isShopping.value) return
 
   const direction = arrowDirections[event.key]
@@ -364,6 +376,12 @@ watch(isTerminal, (terminal) => {
     isRescueNoticeOpen.value = false
   }
 })
+
+watch(isPlaying, (playing) => {
+  if (!playing) {
+    isMapModalOpen.value = false
+  }
+})
 </script>
 
 <template>
@@ -400,14 +418,24 @@ watch(isTerminal, (terminal) => {
         />
       </div>
 
+      <button
+        v-if="isPlaying && hasOldMap"
+        class="game-dashboard-map-button"
+        type="button"
+        :style="rectStyle(HUD_POSITIONS.mapButton)"
+        @click="openMapModal"
+      >
+        查看地图
+      </button>
+
       <ActionPanel
         v-if="isPlaying"
         :action-loading="shortcutLoading"
+        :can-submit-password="canSubmitPassword"
         :current-room="currentRoom"
         :help-open="isHelpOpen"
         :move-loading="moveLoading"
         :password-prompt-open="isPasswordOpen"
-        :password-unlocked="gameState?.passwordUnlocked"
         :room-items-highlighted="areRoomItemsHighlighted"
         :status="gameState?.status"
         :style="rectStyle(HUD_POSITIONS.actionPanel)"
@@ -437,6 +465,14 @@ watch(isTerminal, (terminal) => {
         @close="closeBackpack"
         @drop-item="$emit('drop-item', $event)"
         @use-item="$emit('use-item', $event)"
+        @view-map="openMapModal"
+      />
+
+      <GameMapModal
+        v-if="isPlaying"
+        :current-room-id="gameState?.player?.currentRoomId || currentRoom?.id || ''"
+        :open="isMapModalOpen"
+        @close="closeMapModal"
       />
 
       <div
@@ -446,7 +482,7 @@ watch(isTerminal, (terminal) => {
         @click.self="closeHelp"
       >
         <section
-          class="backpack-modal__panel shortcut-modal"
+          class="backpack-modal__panel shortcut-modal shortcut-modal--help"
           aria-labelledby="help-modal-title"
           role="dialog"
           aria-modal="true"
@@ -466,17 +502,59 @@ watch(isTerminal, (terminal) => {
               ×
             </button>
           </div>
-          <ul class="shortcut-modal__help-list">
-            <li>方向按钮：移动到相邻房间</li>
-            <li>R：返回上一房间</li>
-            <li>H：打开帮助说明</li>
-            <li>Q：查看当前房间物品</li>
-            <li>E：打开背包</li>
-            <li>P：输入暗语</li>
-            <li>保存：保存当前进度</li>
-            <li>重开：重新开始当前关</li>
-            <li>放弃：结束本次探险</li>
-          </ul>
+          <div class="shortcut-modal__help-sections">
+            <section class="shortcut-modal__help-section">
+              <h3>操作</h3>
+              <ul>
+                <li>方向按钮或方向键：移动到相邻房间。</li>
+                <li>E：打开或关闭背包。</li>
+                <li>Q：显示或收起当前房间物品。</li>
+                <li>R：返回上一房间。</li>
+                <li>H：打开或关闭帮助说明。</li>
+                <li>P：输入暗语，仅在机关长廊可用。</li>
+              </ul>
+            </section>
+
+            <section class="shortcut-modal__help-section">
+              <h3>下一步怎么走</h3>
+              <ul>
+                <li>先查看当前房间出口，沿没有探索过的方向前进。</li>
+                <li>遇到物品时，可以先拾取并查看背包说明。</li>
+                <li>看到营地后，可以出售宝物、购买补给，再继续进入下一片区域。</li>
+                <li>如果卡住，检查关键物品、房间描述和日志线索。</li>
+              </ul>
+            </section>
+
+            <section class="shortcut-modal__help-section">
+              <h3>地图</h3>
+              <ul>
+                <li>拾取残旧地图后，可以在主界面或背包中点击“查看地图”。</li>
+                <li>丢弃残旧地图后，将不能继续查看地图。</li>
+                <li>地图用于确认路线和当前位置，不会替玩家自动移动。</li>
+                <li>当前所在位置会在地图上标记。</li>
+              </ul>
+            </section>
+
+            <section class="shortcut-modal__help-section">
+              <h3>背包</h3>
+              <ul>
+                <li>补给可以恢复体力，装备可以增强能力。</li>
+                <li>宝物通常用于商店出售或最后结算。</li>
+                <li>关键物品通常用于特殊机关，不一定能直接使用。</li>
+                <li>背包有负重上限，拾取物品前要留意重量。</li>
+              </ul>
+            </section>
+
+            <section class="shortcut-modal__help-section">
+              <h3>暗语</h3>
+              <ul>
+                <li>暗语线索藏在房间描述、物品描述和日志提示中。</li>
+                <li>留意“芝麻纹”“门”“开门”等关键词。</li>
+                <li>真正的暗语通常由“被呼唤的对象”和“要执行的动作”组成。</li>
+                <li>最终暗语需要在机关长廊输入。</li>
+              </ul>
+            </section>
+          </div>
           <div class="shortcut-modal__room-info">
             <div class="shortcut-modal__room-section">
               <h3>当前房间</h3>

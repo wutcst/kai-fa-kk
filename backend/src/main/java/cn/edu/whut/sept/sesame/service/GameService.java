@@ -32,6 +32,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -76,6 +77,15 @@ public class GameService {
     public static final int UNKNOWN_PRICE = -1;
 
     private static final Map<String, Integer> SHOP_CATALOG = createShopCatalog();
+    private static final Set<String> LEVEL_ONE_ROOM_IDS = Set.of(
+            "entrance", "stone-court", "old-altar", "broken-bridge", "bronze-moon-room",
+            "supply-alcove", "mechanism-path", "stone-gate", "stone-camp");
+    private static final Set<String> LEVEL_TWO_ROOM_IDS = Set.of(
+            "moon-corridor", "moon-secret-room", "hidden-chest-room", "sand-pit", "echo-hall",
+            "merchant-bones", "drain-path", "star-altar", "moon-gate", "corridor-camp");
+    private static final Set<String> LEVEL_THREE_ROOM_IDS = Set.of(
+            "throne-antechamber", "star-side-hall", "ancient-coffer", "golden-throne",
+            "mechanism-gallery", "final-gate", "broken-vault", "deep-well-altar", "hidden-vault");
 
     /**
      * 解锁宝库和最终出口所需的正确暗语。
@@ -179,6 +189,8 @@ public class GameService {
         session.markLevelCheckpoint();
         session.addLog("你支付了 " + TICKET_COST + " 金币入场费。");
         session.addLog("你站在秘窟入口，前方是连通三片遗迹区域的地下秘窟。");
+        session.addLog("传说真正的石门不会被钥匙打开，只会回应一句古老暗语。");
+        session.addLog("沿途留意芝麻纹、门缝刻字和古商队传说，它们会拼出最终石门愿意回应的暗语。");
         session.addLog("游戏目标：穿过三片区域，合理保留或出售宝物，最终用金币结算积分。");
         sessions.put(session.getId(), session);
         return GameState.from(session, "游戏已开始。");
@@ -208,6 +220,8 @@ public class GameService {
         session.markLevelCheckpoint();
         session.addLog("你支付了 " + TICKET_COST + " 金币入场费。");
         session.addLog("你站在秘窟入口，前方是连通三片遗迹区域的地下秘窟。");
+        session.addLog("传说真正的石门不会被钥匙打开，只会回应一句古老暗语。");
+        session.addLog("沿途留意芝麻纹、门缝刻字和古商队传说，它们会拼出最终石门愿意回应的暗语。");
         session.addLog("游戏目标：穿过三片区域，合理保留或出售宝物，最终用金币结算积分。");
         sessions.put(session.getId(), session);
         return GameState.from(session, "游戏已开始。");
@@ -246,6 +260,11 @@ public class GameService {
             session.addLog(message);
             return GameState.from(session, message);
         }
+        if (levelOfRoom(targetRoomId) != session.getCurrentLevel()) {
+            String message = "当前路线已经封闭，请通过营地继续探险进入下一片区域。";
+            session.addLog(message);
+            return GameState.from(session, message);
+        }
 
         Room targetRoom = session.findRoom(targetRoomId)
                 .orElseThrow(() -> new IllegalStateException("目标房间不存在：" + targetRoomId));
@@ -274,6 +293,7 @@ public class GameService {
         if (player.getStamina() == 0) {
             return restartCurrentLevel(session, "体力耗尽，当前关重新开始。");
         }
+        addRoomClueLog(session, targetRoomId);
         checkRoomTransition(session);
         return GameState.from(session, message);
     }
@@ -297,14 +317,20 @@ public class GameService {
             return GameState.from(session, message);
         }
 
+        Room currentRoom = session.getCurrentRoom();
+        Room previousRoom = session.findRoom(previousRoomId)
+                .orElseThrow(() -> new IllegalStateException("上一个房间不存在：" + previousRoomId));
+        if (levelOfRoom(previousRoom.getId()) != session.getCurrentLevel()) {
+            String message = "你不能通过返回动作回到上一片区域。";
+            session.addLog(message);
+            return GameState.from(session, message);
+        }
+
         Player player = session.getPlayer();
         if (player.getStamina() < MOVE_STAMINA_COST) {
             return restartCurrentLevel(session, "体力不足，当前关重新开始。");
         }
 
-        Room currentRoom = session.getCurrentRoom();
-        Room previousRoom = session.findRoom(previousRoomId)
-                .orElseThrow(() -> new IllegalStateException("上一个房间不存在：" + previousRoomId));
         player.decreaseStamina(MOVE_STAMINA_COST);
         session.setPreviousRoomId(currentRoom.getId());
         player.moveTo(previousRoom.getId());
@@ -313,6 +339,7 @@ public class GameService {
         if (player.getStamina() == 0) {
             return restartCurrentLevel(session, "体力耗尽，当前关重新开始。");
         }
+        addRoomClueLog(session, previousRoom.getId());
         checkRoomTransition(session);
         return GameState.from(session, message);
     }
@@ -446,11 +473,13 @@ public class GameService {
 
         String normalizedPassword = requireText(password, "暗语不能为空").trim();
         if (!CORRECT_PASSWORD.equals(normalizedPassword)) {
-            String message = "暗语错误，石门没有任何反应。";
+            session.incrementWrongPasswordAttempts();
+            String message = buildWrongPasswordMessage(normalizedPassword, session.getWrongPasswordAttempts());
             session.addLog(message);
             return GameState.from(session, message);
         }
 
+        session.resetWrongPasswordAttempts();
         session.setPasswordUnlocked(true);
         String message = "暗语正确，最终石门的纹路亮了起来。";
         session.addLog(message);
@@ -641,10 +670,16 @@ public class GameService {
     public GameState continueAdventure(String sessionId) {
         GameSession session = requireShoppingSession(sessionId);
         if (session.getCurrentLevel() == 1) {
+            if (!"stone-camp".equals(session.getPlayer().getCurrentRoomId())) {
+                return GameState.from(session, "当前不在石门营地，不能继续进入下一片区域。");
+            }
             enterLevel(session, 2, LEVEL_TWO_START_ROOM_ID, "你离开石门营地，进入月纹回廊。");
             return GameState.from(session, "第 2 关开始。");
         }
         if (session.getCurrentLevel() == 2) {
+            if (!"corridor-camp".equals(session.getPlayer().getCurrentRoomId())) {
+                return GameState.from(session, "当前不在回廊营地，不能继续进入王座区。");
+            }
             enterLevel(session, 3, LEVEL_THREE_START_ROOM_ID, "你离开回廊营地，抵达沉金王座前厅。");
             return GameState.from(session, "第 3 关开始。");
         }
@@ -729,7 +764,9 @@ public class GameService {
         Room starSideHall = new Room("star-side-hall", "星纹侧殿", "侧殿入口的星纹机关只回应星纹罗盘。");
         Room ancientCoffer = new Room("ancient-coffer", "古代宝匣", "宝匣被星砂封住，里面似乎藏着王权遗物。");
         Room throne = new Room("golden-throne", "沉金王座", "王座沉在碎金与尘土之间，扶手上刻着古王名。");
-        Room longHall = new Room("mechanism-gallery", "机关长廊", "长廊墙面布满机关孔，脚下石板一块比一块沉。");
+        Room longHall = new Room("mechanism-gallery", "机关长廊",
+                "长廊墙面布满机关孔，门缝旁刻着细小的芝麻纹。石门似乎等待一句完整暗语："
+                        + "先说出纹样的名字，再说出让石门开门的命令。");
         Room finalGate = new Room("final-gate", "最终石门", "最后的石门紧闭，门上只留下等待暗语的芝麻纹路。", true, true);
         Room brokenVault = new Room("broken-vault", "破碎金库", "金库已经坍塌一半，仍有少量宝物埋在碎石间。");
         Room deepWell = new Room("deep-well-altar", "深井祭坛", "祭坛下方是看不见底的深井，井壁镶着黑色珍珠。");
@@ -743,7 +780,6 @@ public class GameService {
         connectRooms(bridge, "south", sidePath);
         connectRooms(sidePath, "south", stoneGate);
         connectRooms(stoneGate, "south", stoneCamp);
-        connectRooms(stoneCamp, "south", moonCorridor);
 
         connectRooms(moonCorridor, "west", moonSecret);
         connectRooms(moonSecret, "south", hiddenChest);
@@ -754,7 +790,6 @@ public class GameService {
         connectRooms(drainPath, "south", starAltar);
         connectRooms(echoHall, "south", moonGate);
         connectRooms(moonGate, "south", corridorCamp);
-        connectRooms(corridorCamp, "south", throneAntechamber);
 
         connectRooms(throneAntechamber, "west", starSideHall);
         connectRooms(starSideHall, "south", ancientCoffer);
@@ -815,14 +850,55 @@ public class GameService {
         return restarted;
     }
 
+    private String buildWrongPasswordMessage(String normalizedPassword, int wrongAttemptCount) {
+        boolean containsSesame = normalizedPassword.contains("芝麻");
+        boolean containsOpenDoor = normalizedPassword.contains("开门");
+        String baseMessage;
+
+        if (!containsSesame && !containsOpenDoor) {
+            baseMessage = "石门毫无反应。门上的纹样和门缝刻字似乎都没有被你说中。";
+        } else if (containsSesame && !containsOpenDoor) {
+            baseMessage = "门上的芝麻纹亮了一瞬，却没有开启。你说出了纹样，却还缺少让门打开的命令。";
+        } else if (!containsSesame) {
+            baseMessage = "石门轻轻震动，却很快沉寂。你说出了开启的意图，却漏掉了门上最明显的芝麻纹。";
+        } else {
+            baseMessage = "机关几乎被唤醒，但暗语仍不完整。或许顺序和完整表达也很重要。";
+        }
+
+        if (wrongAttemptCount >= 3) {
+            return baseMessage + " 机关像是在等待一句完整的古老口令：先呼唤门上的纹样，再命令石门开启。";
+        }
+        if (wrongAttemptCount >= 2) {
+            return baseMessage + " 你回想起沿途反复出现的芝麻纹，也许暗语不只是一个动作，"
+                    + "而是“对象”和“命令”的组合。";
+        }
+        return baseMessage;
+    }
+
+    private void addRoomClueLog(GameSession session, String roomId) {
+        switch (roomId) {
+            case "stone-gate":
+                session.addLog("石门关门的门框上残留着芝麻状刻痕，像是曾被一句短促暗语唤醒。");
+                break;
+            case "moon-gate":
+                session.addLog("你靠近月纹关门时，门缝里传来模糊回音：“……芝麻……开门……”");
+                break;
+            case "mechanism-gallery":
+                session.addLog("机关长廊的石门似乎在等待一句完整暗语。");
+                break;
+            default:
+                break;
+        }
+    }
+
     private void checkRoomTransition(GameSession session) {
         String currentRoomId = session.getPlayer().getCurrentRoomId();
-        if ("stone-camp".equals(currentRoomId)) {
+        if ("stone-camp".equals(currentRoomId) && session.getCurrentLevel() == 1) {
             session.setStatus(GameStatus.SHOPPING);
             session.addLog("你抵达石门营地，可以出售宝物或购买道具。");
             return;
         }
-        if ("corridor-camp".equals(currentRoomId)) {
+        if ("corridor-camp".equals(currentRoomId) && session.getCurrentLevel() == 2) {
             session.setStatus(GameStatus.SHOPPING);
             session.addLog("你抵达回廊营地，可以在进入王座区前整理物资。");
             return;
@@ -873,6 +949,19 @@ public class GameService {
         session.clearPreviousRoomId();
         session.markLevelCheckpoint();
         session.addLog(log);
+    }
+
+    private int levelOfRoom(String roomId) {
+        if (LEVEL_ONE_ROOM_IDS.contains(roomId)) {
+            return 1;
+        }
+        if (LEVEL_TWO_ROOM_IDS.contains(roomId)) {
+            return 2;
+        }
+        if (LEVEL_THREE_ROOM_IDS.contains(roomId)) {
+            return 3;
+        }
+        throw new IllegalArgumentException("未知房间编号：" + roomId);
     }
 
     private String requiredItemForRoom(String roomId) {
@@ -1005,7 +1094,9 @@ public class GameService {
     private Item createItem(String itemId) {
         switch (itemId) {
             case "old-map":
-                return new Item("old-map", "残旧地图", "标记着秘窟大致结构的羊皮纸，边角已经被潮气泡烂。", ItemType.KEY, 1, 0, 0, 0);
+                return new Item("old-map", "残旧地图",
+                        "标记着秘窟道路的羊皮纸，边角画着细小的芝麻纹，旁边写着：门听得懂被呼唤的名字。",
+                        ItemType.KEY, 1, 0, 0, 0);
             case "clean-water":
                 return new Item("clean-water", "清水", "装在旧皮囊里的清水，入口微凉，能让探险者短暂恢复精神。", ItemType.SUPPLY, 2, 10, 0, 0);
             case "dry-food":

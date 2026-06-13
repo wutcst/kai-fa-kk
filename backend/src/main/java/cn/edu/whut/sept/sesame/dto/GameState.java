@@ -29,6 +29,7 @@ public class GameState {
     private final int currentLevel;
     private final int finalScore;
     private final int highScore;
+    private final boolean canSubmitPassword;
 
     /**
      * 创建一个完整游戏状态对象。
@@ -46,7 +47,7 @@ public class GameState {
      */
     public GameState(String sessionId, GameStatus status, PlayerState player, RoomState currentRoom,
             List<String> logs, String message, boolean passwordUnlocked, int currentLevel, int finalScore,
-            int highScore) {
+            int highScore, boolean canSubmitPassword) {
         this.sessionId = sessionId;
         this.status = status;
         this.player = player;
@@ -57,6 +58,7 @@ public class GameState {
         this.currentLevel = currentLevel;
         this.finalScore = finalScore;
         this.highScore = highScore;
+        this.canSubmitPassword = canSubmitPassword;
     }
 
     /**
@@ -70,7 +72,7 @@ public class GameState {
         Objects.requireNonNull(session, "游戏会话不能为空");
         return new GameState(session.getId(), session.getStatus(), PlayerState.from(session.getPlayer()),
                 RoomState.from(session.getCurrentRoom()), session.getLogs(), message, session.isPasswordUnlocked(),
-                session.getCurrentLevel(), session.getFinalScore(), session.getHighScore());
+                session.getCurrentLevel(), session.getFinalScore(), session.getHighScore(), canSubmitPassword(session));
     }
 
     /**
@@ -161,5 +163,19 @@ public class GameState {
      */
     public int getHighScore() {
         return highScore;
+    }
+
+    /**
+     * Determines whether the current room accepts password submission.
+     *
+     * @return true when password submission is available
+     */
+    public boolean isCanSubmitPassword() {
+        return canSubmitPassword;
+    }
+
+    private static boolean canSubmitPassword(GameSession session) {
+        return "mechanism-gallery".equals(session.getPlayer().getCurrentRoomId())
+                && session.getStatus() == GameStatus.IN_PROGRESS;
     }
 }

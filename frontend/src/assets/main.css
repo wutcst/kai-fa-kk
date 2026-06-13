@@ -1129,7 +1129,7 @@ button {
     inset 0 0 38px rgba(64, 184, 222, 0.06);
 }
 
-.game-dashboard-stage.game-dashboard--immersive > *:not(.backpack-modal):not(.game-state-modal) {
+.game-dashboard-stage.game-dashboard--immersive > *:not(.backpack-modal):not(.game-state-modal):not(.game-map-modal-backdrop) {
   position: absolute;
   z-index: 2;
 }
@@ -1139,6 +1139,10 @@ button {
 }
 
 .game-dashboard-stage .game-state-modal {
+  position: fixed;
+}
+
+.game-dashboard-stage .game-map-modal-backdrop {
   position: fixed;
 }
 
@@ -1732,6 +1736,40 @@ button {
   opacity: 0.38;
 }
 
+.game-dashboard-map-button {
+  z-index: 4;
+  padding: 0 14px;
+  border: 1px solid rgba(126, 220, 237, 0.48);
+  border-radius: 8px;
+  color: #a8f2ff;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+  background: rgba(12, 47, 57, 0.82);
+  box-shadow:
+    inset 0 0 10px rgba(80, 210, 255, 0.1),
+    0 0 8px rgba(80, 210, 255, 0.08);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    filter 0.16s ease;
+}
+
+.game-dashboard-map-button:hover:not(:disabled) {
+  border-color: rgba(159, 243, 255, 0.8);
+  filter: brightness(1.12);
+  box-shadow:
+    inset 0 0 12px rgba(80, 210, 255, 0.18),
+    0 0 12px rgba(80, 210, 255, 0.24);
+}
+
+.game-dashboard-map-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .game-scene {
   display: block;
   pointer-events: auto;
@@ -2289,6 +2327,139 @@ button {
   background: linear-gradient(135deg, #5a3518, #241207);
 }
 
+.game-map-modal-backdrop {
+  z-index: 90;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 38px;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(83, 206, 232, 0.15), transparent 42%),
+    rgba(1, 4, 8, 0.8);
+  backdrop-filter: blur(7px);
+}
+
+.game-map-modal {
+  width: min(1500px, calc(100% - 80px));
+  padding: 20px 22px 24px;
+  border: 1px solid rgba(218, 169, 84, 0.72);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(75, 205, 235, 0.1), transparent 34%),
+    linear-gradient(180deg, rgba(9, 15, 22, 0.94), rgba(3, 7, 11, 0.98));
+  box-shadow:
+    0 34px 90px rgba(0, 0, 0, 0.76),
+    0 0 28px rgba(68, 204, 255, 0.16),
+    inset 0 0 24px rgba(255, 214, 129, 0.07);
+}
+
+.game-map-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 14px;
+}
+
+.game-map-modal__eyebrow {
+  margin: 0 0 3px;
+  color: #85eafa;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+}
+
+.game-map-modal__header h2 {
+  margin: 0;
+  color: #f5d99b;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
+}
+
+.game-map-modal__header button {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid rgba(218, 169, 84, 0.64);
+  border-radius: 8px;
+  color: #f5d99b;
+  font-size: 22px;
+  font-weight: 900;
+  cursor: pointer;
+  background: rgba(74, 39, 16, 0.88);
+}
+
+.game-map-frame {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid rgba(218, 169, 84, 0.55);
+  border-radius: 10px;
+  aspect-ratio: 16 / 9;
+  background: #15100a;
+  box-shadow:
+    0 18px 42px rgba(0, 0, 0, 0.56),
+    inset 0 0 24px rgba(39, 19, 5, 0.3);
+}
+
+.game-map-frame__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+}
+
+.game-map-current-marker {
+  position: absolute;
+  pointer-events: none;
+}
+
+.game-map-current-marker {
+  z-index: 6;
+  transform: translate(-50%, -50%);
+}
+
+.game-map-current-marker__dot {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border: 3px solid #fff1b8;
+  border-radius: 999px;
+  background: #d93a24;
+  box-shadow:
+    0 0 0 4px rgba(217, 58, 36, 0.28),
+    0 0 16px rgba(217, 58, 36, 0.85);
+  animation: game-map-current-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes game-map-current-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.22);
+  }
+}
+
+.game-map-modal__current-room {
+  margin: 14px 0 0;
+  color: #f1dfbf;
+  font-size: 16px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.game-map-modal__current-room strong {
+  color: #8ff3ff;
+  font-weight: 900;
+}
+
 .inventory-filter {
   display: flex;
   flex-wrap: wrap;
@@ -2432,7 +2603,16 @@ button {
 
 .inventory-item-card__actions {
   display: flex;
+  align-items: center;
   gap: 10px;
+}
+
+.inventory-item-card__passive-label {
+  min-width: 76px;
+  color: #d9c08a;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: center;
 }
 
 .inventory-item-card__actions button {
@@ -2462,19 +2642,64 @@ button {
   width: min(500px, calc(100vw - 48px));
 }
 
-.shortcut-modal__help-list {
+.shortcut-modal--help {
+  width: min(780px, calc(100vw - 48px));
+  max-height: min(860px, calc(100vh - 48px));
+  overflow-y: auto;
+  padding-right: 22px;
+  scrollbar-color: rgba(196, 139, 61, 0.78) rgba(33, 21, 13, 0.62);
+  scrollbar-width: thin;
+}
+
+.shortcut-modal--help::-webkit-scrollbar {
+  width: 8px;
+}
+
+.shortcut-modal--help::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(33, 21, 13, 0.62);
+}
+
+.shortcut-modal--help::-webkit-scrollbar-thumb {
+  border: 1px solid rgba(255, 219, 139, 0.22);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(216, 164, 79, 0.92), rgba(98, 58, 23, 0.92));
+}
+
+.shortcut-modal__help-sections {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px 24px;
+  gap: 14px;
   margin: 24px 0 0;
-  padding: 20px 22px 20px 42px;
+}
+
+.shortcut-modal__help-section {
+  padding: 16px 18px;
   border: 1px solid rgba(214, 166, 83, 0.3);
   border-radius: 10px;
-  color: #f1dfbf;
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1.55;
   background: rgba(5, 10, 17, 0.52);
+}
+
+.shortcut-modal__help-section h3 {
+  margin: 0 0 10px;
+  color: #f5d99b;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.shortcut-modal__help-section ul {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding-left: 20px;
+  color: #f1dfbf;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.shortcut-modal__help-section:nth-child(5) {
+  grid-column: 1 / -1;
 }
 
 .shortcut-modal__room-info {
@@ -2602,8 +2827,12 @@ button {
     grid-template-columns: 1fr;
   }
 
-  .shortcut-modal__help-list {
+  .shortcut-modal__help-sections {
     grid-template-columns: 1fr;
+  }
+
+  .shortcut-modal__help-section:nth-child(5) {
+    grid-column: auto;
   }
 
   .shortcut-modal__room-info {

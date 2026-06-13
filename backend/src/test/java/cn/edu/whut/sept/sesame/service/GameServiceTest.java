@@ -49,6 +49,143 @@ class GameServiceTest {
         assertEquals(Player.DEFAULT_MONEY - GameService.TICKET_COST, state.getPlayer().getMoney());
         assertEquals(Player.DEFAULT_STAMINA, state.getPlayer().getStamina());
         assertFalse(state.getLogs().isEmpty());
+        assertFalse(state.isCanSubmitPassword());
+    }
+
+    /**
+     * Confirms that a wrong password returns a useful clue without unlocking the final gate.
+     */
+    @Test
+    void wrongPasswordReturnsHint() {
+        GameService service = createService();
+        GameState state = service.startGame();
+        GameSession session = service.getCurrentSession(state.getSessionId());
+        session.setCurrentLevel(3);
+        session.getPlayer().moveTo("mechanism-gallery");
+
+        GameState blockedState = service.submitPassword(state.getSessionId(), "错误暗语");
+
+        assertFalse(blockedState.isPasswordUnlocked());
+        assertTrue(blockedState.getMessage().contains("纹样"));
+        assertTrue(blockedState.getMessage().contains("门缝刻字"));
+        assertEquals(1, session.getWrongPasswordAttempts());
+    }
+
+    /**
+     * Confirms that wrong password hints react to the words already discovered by the player.
+     */
+    @Test
+    void wrongPasswordReturnsProximityHints() {
+        GameService service = createService();
+        GameState state = service.startGame();
+        GameSession session = service.getCurrentSession(state.getSessionId());
+        session.setCurrentLevel(3);
+        session.getPlayer().moveTo("mechanism-gallery");
+
+        GameState sesameOnly = service.submitPassword(state.getSessionId(), "芝麻");
+        GameState openOnly = service.submitPassword(state.getSessionId(), "开门");
+        GameState reversed = service.submitPassword(state.getSessionId(), "开门芝麻");
+
+        assertTrue(sesameOnly.getMessage().contains("芝麻纹"));
+        assertTrue(sesameOnly.getMessage().contains("缺少"));
+        assertTrue(openOnly.getMessage().contains("开启"));
+        assertTrue(openOnly.getMessage().contains("芝麻纹"));
+        assertTrue(reversed.getMessage().contains("顺序"));
+        assertTrue(reversed.getMessage().contains("完整"));
+        assertFalse(reversed.isPasswordUnlocked());
+    }
+
+    /**
+     * Confirms that repeated wrong passwords reveal progressively clearer structure hints.
+     */
+    @Test
+    void wrongPasswordHintsProgressAndResetAfterSuccess() {
+        GameService service = createService();
+        GameState state = service.startGame();
+        GameSession session = service.getCurrentSession(state.getSessionId());
+        session.setCurrentLevel(3);
+        session.getPlayer().moveTo("mechanism-gallery");
+
+        service.submitPassword(state.getSessionId(), "你好");
+        GameState secondAttempt = service.submitPassword(state.getSessionId(), "你好");
+        GameState thirdAttempt = service.submitPassword(state.getSessionId(), "你好");
+
+        assertTrue(secondAttempt.getMessage().contains("对象"));
+        assertTrue(secondAttempt.getMessage().contains("命令"));
+        assertTrue(thirdAttempt.getMessage().contains("先呼唤"));
+        assertTrue(thirdAttempt.getMessage().contains("再命令"));
+        assertEquals(3, session.getWrongPasswordAttempts());
+
+        GameState unlockedState = service.submitPassword(state.getSessionId(), GameService.CORRECT_PASSWORD);
+
+        assertTrue(unlockedState.isPasswordUnlocked());
+        assertEquals(0, session.getWrongPasswordAttempts());
+    }
+
+    /**
+     * Confirms that early logs, the old map, and the mechanism gallery form a clue chain.
+     */
+    @Test
+    void passwordClueChainAppearsInLogsItemAndRoomDescription() {
+        GameService service = createService();
+        GameState state = service.startGame();
+        GameSession session = service.getCurrentSession(state.getSessionId());
+
+        assertTrue(state.getLogs().stream().anyMatch(log -> log.contains("芝麻纹") && log.contains("暗语")));
+        assertTrue(session.getCurrentRoom().getItems().stream()
+                .filter(item -> item.getId().equals("old-map"))
+                .anyMatch(item -> item.getDescription().contains("芝麻纹")
+                        && item.getDescription().contains("门听得懂")));
+
+        String galleryDescription = session.findRoom("mechanism-gallery").orElseThrow().getDescription();
+        assertTrue(galleryDescription.contains("芝麻"));
+        assertTrue(galleryDescription.contains("暗语"));
+        assertTrue(galleryDescription.contains("开门"));
+    }
+
+    /**
+     * Confirms that entering each key gate room adds the matching clue to the game log.
+     */
+    @Test
+    void enteringKeyRoomsAddsPasswordClueLogs() {
+        GameService service = createService();
+        GameState state = service.startGame();
+        GameSession session = service.getCurrentSession(state.getSessionId());
+
+        session.getPlayer().moveTo("mechanism-path");
+        service.move(state.getSessionId(), "south");
+        assertTrue(service.getState(state.getSessionId()).getLogs().stream()
+                .anyMatch(log -> log.contains("石门关门") && log.contains("芝麻")));
+
+        session.setCurrentLevel(2);
+        session.getPlayer().moveTo("echo-hall");
+        service.move(state.getSessionId(), "south");
+        assertTrue(service.getState(state.getSessionId()).getLogs().stream()
+                .anyMatch(log -> log.contains("月纹关门") && log.contains("开门")));
+
+        session.setCurrentLevel(3);
+        session.getPlayer().moveTo("golden-throne");
+        service.move(state.getSessionId(), "east");
+        assertTrue(service.getState(state.getSessionId()).getLogs().stream()
+                .anyMatch(log -> log.contains("机关长廊") && log.contains("完整暗语")));
+    }
+
+    /**
+     * Confirms that password submission is available only in the mechanism gallery while exploring.
+     */
+    @Test
+    void canSubmitPasswordOnlyInMechanismGalleryWhileExploring() {
+        GameService service = createService();
+        GameState state = service.startGame();
+        GameSession session = service.getCurrentSession(state.getSessionId());
+
+        assertFalse(state.isCanSubmitPassword());
+
+        session.getPlayer().moveTo("mechanism-gallery");
+        assertTrue(service.getState(state.getSessionId()).isCanSubmitPassword());
+
+        session.setStatus(GameStatus.SHOPPING);
+        assertFalse(service.getState(state.getSessionId()).isCanSubmitPassword());
     }
 
     /**
@@ -167,6 +304,106 @@ class GameServiceTest {
     }
 
     /**
+     * Confirms that level two can only be entered from the shop flow and cannot move back north.
+     */
+    @Test
+    void levelTwoStartCannotMoveNorthToPreviousShop() {
+        GameService service = createService();
+        GameState levelTwoState = continueFromShop(service, 1, "stone-camp");
+        GameSession session = service.getCurrentSession(levelTwoState.getSessionId());
+        session.findRoom("moon-corridor").orElseThrow().addExit("north", "stone-camp");
+        int stamina = session.getPlayer().getStamina();
+
+        GameState movedState = service.move(levelTwoState.getSessionId(), "north");
+
+        assertEquals(2, movedState.getCurrentLevel());
+        assertEquals("moon-corridor", movedState.getCurrentRoom().getId());
+        assertEquals(GameStatus.IN_PROGRESS, movedState.getStatus());
+        assertEquals(stamina, movedState.getPlayer().getStamina());
+        assertEquals("当前路线已经封闭，请通过营地继续探险进入下一片区域。", movedState.getMessage());
+    }
+
+    /**
+     * Confirms that entering level two clears the previous room used by back().
+     */
+    @Test
+    void levelTwoStartCannotBackToPreviousShop() {
+        GameService service = createService();
+        GameState levelTwoState = continueFromShop(service, 1, "stone-camp");
+        GameSession session = service.getCurrentSession(levelTwoState.getSessionId());
+        session.setPreviousRoomId("stone-camp");
+        int stamina = session.getPlayer().getStamina();
+
+        GameState backedState = service.back(levelTwoState.getSessionId());
+
+        assertEquals(2, backedState.getCurrentLevel());
+        assertEquals("moon-corridor", backedState.getCurrentRoom().getId());
+        assertEquals(GameStatus.IN_PROGRESS, backedState.getStatus());
+        assertEquals(stamina, backedState.getPlayer().getStamina());
+        assertEquals("你不能通过返回动作回到上一片区域。", backedState.getMessage());
+    }
+
+    /**
+     * Confirms that level three can only be entered from the shop flow and cannot move back north.
+     */
+    @Test
+    void levelThreeStartCannotMoveNorthToPreviousShop() {
+        GameService service = createService();
+        GameState levelThreeState = continueFromShop(service, 2, "corridor-camp");
+        GameSession session = service.getCurrentSession(levelThreeState.getSessionId());
+        session.findRoom("throne-antechamber").orElseThrow().addExit("north", "corridor-camp");
+        int stamina = session.getPlayer().getStamina();
+
+        GameState movedState = service.move(levelThreeState.getSessionId(), "north");
+
+        assertEquals(3, movedState.getCurrentLevel());
+        assertEquals("throne-antechamber", movedState.getCurrentRoom().getId());
+        assertEquals(GameStatus.IN_PROGRESS, movedState.getStatus());
+        assertEquals(stamina, movedState.getPlayer().getStamina());
+        assertEquals("当前路线已经封闭，请通过营地继续探险进入下一片区域。", movedState.getMessage());
+    }
+
+    /**
+     * Confirms that entering level three clears the previous room used by back().
+     */
+    @Test
+    void levelThreeStartCannotBackToPreviousShop() {
+        GameService service = createService();
+        GameState levelThreeState = continueFromShop(service, 2, "corridor-camp");
+        GameSession session = service.getCurrentSession(levelThreeState.getSessionId());
+        session.setPreviousRoomId("corridor-camp");
+        int stamina = session.getPlayer().getStamina();
+
+        GameState backedState = service.back(levelThreeState.getSessionId());
+
+        assertEquals(3, backedState.getCurrentLevel());
+        assertEquals("throne-antechamber", backedState.getCurrentRoom().getId());
+        assertEquals(GameStatus.IN_PROGRESS, backedState.getStatus());
+        assertEquals(stamina, backedState.getPlayer().getStamina());
+        assertEquals("你不能通过返回动作回到上一片区域。", backedState.getMessage());
+    }
+
+    /**
+     * Confirms that an invalid shopping room cannot skip directly into the next level.
+     */
+    @Test
+    void continueAdventureRejectsShoppingStateInWrongRoom() {
+        GameService service = createService();
+        GameState startedState = service.startGame();
+        GameSession session = service.getCurrentSession(startedState.getSessionId());
+        session.setCurrentLevel(2);
+        session.getPlayer().moveTo("stone-camp");
+        session.setStatus(GameStatus.SHOPPING);
+
+        GameState continuedState = service.continueAdventure(startedState.getSessionId());
+
+        assertEquals(2, continuedState.getCurrentLevel());
+        assertEquals("stone-camp", continuedState.getCurrentRoom().getId());
+        assertEquals(GameStatus.SHOPPING, continuedState.getStatus());
+        assertEquals("当前不在回廊营地，不能继续进入王座区。", continuedState.getMessage());
+    }
+
+    /**
      * 确认拾取物品会从房间移除物品并放入背包。
      */
     @Test
@@ -265,7 +502,9 @@ class GameServiceTest {
     void moveToPasswordRoomFailsBeforePasswordIsUnlocked() {
         GameService service = createService();
         GameState state = service.startGame();
-        service.getCurrentSession(state.getSessionId()).getPlayer().moveTo("mechanism-gallery");
+        GameSession session = service.getCurrentSession(state.getSessionId());
+        session.setCurrentLevel(3);
+        session.getPlayer().moveTo("mechanism-gallery");
 
         GameState blockedState = service.move(state.getSessionId(), "east");
 
@@ -295,11 +534,28 @@ class GameServiceTest {
     void submitPasswordFailsOutsideMechanismGallery() {
         GameService service = createService();
         GameState state = service.startGame();
+        GameSession session = service.getCurrentSession(state.getSessionId());
 
         GameState blockedState = service.submitPassword(state.getSessionId(), GameService.CORRECT_PASSWORD);
 
         assertFalse(blockedState.isPasswordUnlocked());
         assertEquals("这里没有可以输入暗语的机关。", blockedState.getMessage());
+        assertEquals(0, session.getWrongPasswordAttempts());
+    }
+
+    /**
+     * Confirms that an empty password is rejected before it counts as a wrong attempt.
+     */
+    @Test
+    void emptyPasswordDoesNotCountAsWrongAttempt() {
+        GameService service = createService();
+        GameState state = service.startGame();
+        GameSession session = service.getCurrentSession(state.getSessionId());
+        session.setCurrentLevel(3);
+        session.getPlayer().moveTo("mechanism-gallery");
+
+        assertThrows(IllegalArgumentException.class, () -> service.submitPassword(state.getSessionId(), " "));
+        assertEquals(0, session.getWrongPasswordAttempts());
     }
 
     /**
@@ -309,10 +565,11 @@ class GameServiceTest {
     void playerWinsWhenReachingExitWithTreasureAfterPasswordUnlocked() {
         GameService service = createService();
         GameState state = service.startGame();
-        service.getCurrentSession(state.getSessionId()).getPlayer().moveTo("mechanism-gallery");
+        GameSession session = service.getCurrentSession(state.getSessionId());
+        session.setCurrentLevel(3);
+        session.getPlayer().moveTo("mechanism-gallery");
         service.submitPassword(state.getSessionId(), GameService.CORRECT_PASSWORD);
-        service.getCurrentSession(state.getSessionId()).getPlayer()
-                .addItem(new cn.edu.whut.sept.sesame.model.Item("gold-crown", "沉金王冠",
+        session.getPlayer().addItem(new cn.edu.whut.sept.sesame.model.Item("gold-crown", "沉金王冠",
                         "王冠沉重冰冷，内侧刻着早已失落的王名。",
                         cn.edu.whut.sept.sesame.model.ItemType.TREASURE, 6, 0, 0, 180));
 
@@ -454,6 +711,17 @@ class GameServiceTest {
         service.register("zero-player", "123456");
 
         assertTrue(service.listLeaderboard(10).isEmpty());
+    }
+
+    private GameState continueFromShop(GameService service, int level, String shopRoomId) {
+        GameState startedState = service.startGame();
+        GameSession session = service.getCurrentSession(startedState.getSessionId());
+        session.setCurrentLevel(level);
+        session.getPlayer().moveTo(shopRoomId);
+        session.setPreviousRoomId(level == 1 ? "stone-gate" : "moon-gate");
+        session.setStatus(GameStatus.SHOPPING);
+
+        return service.continueAdventure(startedState.getSessionId());
     }
 
     private GameService createService() {
