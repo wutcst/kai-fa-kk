@@ -50,6 +50,7 @@ class GameControllerTest {
                 .andExpect(jsonPath("$.sessionId").isNotEmpty())
                 .andExpect(jsonPath("$.status").value("IN_PROGRESS"))
                 .andExpect(jsonPath("$.player.currentRoomId").value("entrance"))
+                .andExpect(jsonPath("$.canSubmitPassword").value(false))
                 .andExpect(jsonPath("$.currentRoom.name").value("秘窟入口"));
     }
 
