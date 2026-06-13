@@ -1,66 +1,153 @@
 <script setup>
-import { computed, ref } from 'vue'
-import { getItemIcon } from '../utils/assetMap'
+import { computed, ref } from "vue";
+import { getItemIcon } from "../utils/assetMap";
 
 const props = defineProps({
   items: {
     type: Array,
-    required: true,
+    required: true
   },
   player: {
     type: Object,
-    required: true,
+    required: true
   },
   actionLoading: {
     type: Boolean,
-    default: false,
-  },
-})
+    default: false
+  }
+});
 
-defineEmits(['close', 'use-item', 'drop-item'])
+defineEmits(["close", "use-item", "drop-item", "view-map"]);
 
 const itemFilters = [
-  { key: 'ALL', label: '全部', types: [] },
-  { key: 'TREASURE', label: '宝物', types: ['TREASURE', '宝物'] },
-  { key: 'SUPPLY', label: '补给', types: ['SUPPLY', '补给'] },
-  { key: 'EQUIPMENT', label: '装备', types: ['EQUIPMENT', '装备'] },
-  { key: 'KEY', label: '关键物品', types: ['KEY', '关键物品'] },
-]
+  { key: "ALL", label: "全部", types: [] },
+  { key: "TREASURE", label: "宝物", types: ["TREASURE", "宝物"] },
+  { key: "SUPPLY", label: "补给", types: ["SUPPLY", "补给"] },
+  { key: "EQUIPMENT", label: "装备", types: ["EQUIPMENT", "装备"] },
+  { key: "KEY", label: "关键物品", types: ["KEY", "关键物品"] }
+];
 
-const activeFilter = ref('ALL')
+const activeFilter = ref("ALL");
 
-const normalizeItemType = (type) => String(type || '').trim().toUpperCase()
+const normalizeItemType = type =>
+  String(type || "")
+    .trim()
+    .toUpperCase();
 
-const formatItemType = (type) => {
+const formatItemType = type => {
   const typeMap = {
-    KEY: '关键物品',
-    TREASURE: '宝物',
-    SUPPLY: '补给',
-    EQUIPMENT: '装备',
+    KEY: "关键物品",
+    TREASURE: "宝物",
+    SUPPLY: "补给",
+    EQUIPMENT: "装备"
+  };
+
+  return typeMap[normalizeItemType(type)] || type || "未知";
+};
+
+const getItemValue = item =>
+  Number(item?.value ?? item?.price ?? item?.worth ?? item?.moneyValue ?? 0);
+
+const getNumberValue = value => Number(value || 0);
+
+const isOldMap = item => item?.id === "old-map";
+
+const hasDirectUseEffect = item =>
+  getNumberValue(item?.staminaEffect) > 0 ||
+  getNumberValue(item?.maxWeightEffect) > 0;
+
+const canUseItem = item => {
+  if (!item || isOldMap(item)) return false;
+
+  const type = normalizeItemType(item.type);
+
+  if (type === "SUPPLY") {
+    return typeof item.usable === "boolean" ? item.usable : true;
   }
 
-  return typeMap[normalizeItemType(type)] || type || '未知'
-}
+  if (type === "EQUIPMENT") {
+    const usableByBackend =
+      typeof item.usable === "boolean" ? item.usable : true;
+    return usableByBackend && hasDirectUseEffect(item);
+  }
 
-const getItemValue = (item) => (
-  item.value
-  ?? item.price
-  ?? item.worth
-  ?? item.moneyValue
-  ?? 0
-)
+  return false;
+};
+
+const getUseLabel = item => {
+  if (normalizeItemType(item.type) === "EQUIPMENT") return "装备";
+  return "使用";
+};
+
+const isPassiveKeyItem = item =>
+  normalizeItemType(item.type) === "KEY" && !isOldMap(item);
+
+const isPassiveEquipment = item =>
+  normalizeItemType(item.type) === "EQUIPMENT" && !hasDirectUseEffect(item);
+
+const getItemEffectText = item => {
+  if (!item) {
+    return "";
+  }
+
+  const type = normalizeItemType(item.type);
+  const staminaEffect = getNumberValue(item.staminaEffect);
+  const maxWeightEffect = getNumberValue(item.maxWeightEffect);
+  const moneyValue = getItemValue(item);
+
+  if (isOldMap(item)) {
+    return "可查看秘窟地图，打开地图不会消耗。";
+  }
+
+  if (staminaEffect > 0) {
+    return `恢复体力 ${staminaEffect}`;
+  }
+
+  if (maxWeightEffect > 0) {
+    return `增加负重 ${maxWeightEffect}`;
+  }
+
+  if (item.id === "bronze-moon-token") {
+    return `宝物价值：${moneyValue} 金币；持有可进入月纹密室。`;
+  }
+
+  if (item.id === "star-compass") {
+    return `宝物价值：${moneyValue} 金币；持有可进入星纹侧殿。`;
+  }
+
+  if (moneyValue > 0) {
+    return `宝物价值：${moneyValue} 金币，可出售或通关结算。`;
+  }
+
+  if (item.id === "iron-boots") {
+    return "特殊装备：用于稳定通过松动石板，无需主动使用。";
+  }
+
+  if (type === "KEY") {
+    return "关键物品：用于机关、路线或线索判断，不一定能直接使用。";
+  }
+
+  if (type === "EQUIPMENT") {
+    return "装备物品：会在合适场景中发挥作用。";
+  }
+
+  return "特殊物品：请结合房间描述和日志判断用途。";
+};
 
 const filteredItems = computed(() => {
-  const selectedFilter = itemFilters.find((filter) => filter.key === activeFilter.value)
-  if (!selectedFilter || selectedFilter.key === 'ALL') {
-    return props.items
+  const selectedFilter = itemFilters.find(
+    filter => filter.key === activeFilter.value
+  );
+  if (!selectedFilter || selectedFilter.key === "ALL") {
+    return props.items;
   }
 
-  return props.items.filter((item) => (
-    selectedFilter.types.includes(item.type)
-    || selectedFilter.types.includes(normalizeItemType(item.type))
-  ))
-})
+  return props.items.filter(
+    item =>
+      selectedFilter.types.includes(item.type) ||
+      selectedFilter.types.includes(normalizeItemType(item.type))
+  );
+});
 </script>
 
 <template>
@@ -133,7 +220,9 @@ const filteredItems = computed(() => {
               <h3 class="inventory-item-card__name">
                 {{ item.name }}
               </h3>
-              <div class="inventory-item-card__meta">
+              <div
+                class="inventory-item-card__meta"
+              >
                 {{ formatItemType(item.type) }} · 重量 {{ item.weight ?? 0 }}
               </div>
             </div>
@@ -144,20 +233,34 @@ const filteredItems = computed(() => {
           </p>
 
           <div class="inventory-item-card__value">
-            <span v-if="item.staminaEffect > 0">恢复体力 <strong>{{ item.staminaEffect }}</strong></span>
-            <span v-if="item.maxWeightEffect > 0">增加负重 <strong>{{ item.maxWeightEffect }}</strong></span>
-            <span v-if="getItemValue(item) > 0">价值 <strong>{{ getItemValue(item) }}</strong></span>
-            <span v-if="!item.staminaEffect && !item.maxWeightEffect && !getItemValue(item)">无直接效果</span>
+            <span>{{ getItemEffectText(item) }}</span>
           </div>
 
           <div class="inventory-item-card__actions">
             <button
+              v-if="isOldMap(item)"
+              type="button"
+              :disabled="actionLoading"
+              @click="$emit('view-map')"
+            >
+              查看地图
+            </button>
+            <button
+              v-else-if="canUseItem(item)"
               type="button"
               :disabled="actionLoading"
               @click="$emit('use-item', item.id)"
             >
-              使用
+              {{ getUseLabel(item) }}
             </button>
+            <span
+              v-else-if="isPassiveKeyItem(item)"
+              class="inventory-item-card__passive-label"
+            >关键物品</span>
+            <span
+              v-else-if="isPassiveEquipment(item)"
+              class="inventory-item-card__passive-label"
+            >无需主动使用</span>
             <button
               type="button"
               :disabled="actionLoading"
