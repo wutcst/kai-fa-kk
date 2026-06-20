@@ -1,7 +1,24 @@
-# 忽略以下目录中的所有子目录及文件
-/target/*
-/.idea/*
+# Java / Maven
+target/
+*.class
 
-# 忽略以下文件
+# Node / Frontend
+node_modules/
+dist/
+
+# IDE
+.idea/
+.vscode/
 *.iml
+
+# Logs
+*.log
+
+# Local SQLite database
+data/
+*.db
+*.sqlite
+
+# OS
 .DS_Store
+Thumbs.db

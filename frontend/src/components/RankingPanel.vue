@@ -1,0 +1,143 @@
+<script setup>
+import { computed } from 'vue'
+import { getUiAsset } from '../utils/assetMap'
+
+const props = defineProps({
+  ranking: {
+    type: Array,
+    default: () => [],
+  },
+  loading: {
+    type: Boolean,
+    default: false,
+  },
+  errorMessage: {
+    type: String,
+    default: '',
+  },
+})
+
+const RANKING_SLOTS = {
+  title: { x: -18, y: 40, w: 360, h: 30 },
+
+  row1: { x: 32, y: 54, w: 296, h: 46 },
+  row2: { x: 32, y: 117, w: 296, h: 46 },
+  row3: { x: 32, y: 170, w: 296, h: 46 },
+
+  badge1: { x: 41, y: 102, w: 28, h: 28 },
+  badge2: { x: 41, y: 159, w: 28, h: 28 },
+  badge3: { x: 41, y: 217, w: 28, h: 28 },
+
+  name1: { x: 100, y: 94, w: 150, h: 46 },
+  name2: { x: 100, y: 150, w: 150, h: 46 },
+  name3: { x: 100, y: 208, w: 150, h: 46 },
+
+  score1: { x: 210, y: 94, w: 58, h: 46 },
+  score2: { x: 210, y: 150, w: 58, h: 46 },
+  score3: { x: 210, y: 208, w: 58, h: 46 },
+
+  state: { x: 76, y: 94, w: 208, h: 46 },
+}
+
+const slotStyle = (slot) => ({
+  left: `${slot.x}px`,
+  top: `${slot.y}px`,
+  width: `${slot.w}px`,
+  height: `${slot.h}px`,
+})
+
+const rankingFrame = computed(() => getUiAsset('rankingPanelFrame'))
+const hasRankingData = computed(() => props.ranking.length > 0)
+const panelState = computed(() => {
+  if (props.loading) return 'loading'
+  if (props.errorMessage) return 'error'
+  if (!hasRankingData.value) return 'empty'
+  return 'success'
+})
+const visibleRanking = computed(() => props.ranking.slice(0, 3).map((entry, index) => ({
+  rank: entry.rank ?? index + 1,
+  playerName: entry.username || '寻宝者',
+  score: entry.score ?? 0,
+  rowSlot: RANKING_SLOTS[`row${index + 1}`],
+  badgeSlot: RANKING_SLOTS[`badge${index + 1}`],
+  nameSlot: RANKING_SLOTS[`name${index + 1}`],
+  scoreSlot: RANKING_SLOTS[`score${index + 1}`],
+})))
+</script>
+
+<template>
+  <section
+    class="ranking-panel-template"
+    aria-labelledby="ranking-panel-title"
+  >
+    <img
+      v-if="rankingFrame"
+      class="ranking-panel-template__frame"
+      :src="rankingFrame"
+      alt=""
+      aria-hidden="true"
+    >
+
+    <div
+      id="ranking-panel-title"
+      class="ranking-panel-template__title"
+      :style="slotStyle(RANKING_SLOTS.title)"
+    >
+      探险排行
+    </div>
+
+    <template v-if="panelState === 'success'">
+      <template
+        v-for="entry in visibleRanking"
+        :key="entry.rank"
+      >
+        <div
+          class="ranking-panel-template__row"
+          :class="{ 'ranking-panel-template__row--current': entry.current }"
+          :style="slotStyle(entry.rowSlot)"
+        />
+        <div
+          class="ranking-panel-template__rank"
+          :class="{
+            'ranking-panel-template__rank--first': entry.rank === 1,
+            'ranking-panel-template__rank--current': entry.current,
+          }"
+          :style="slotStyle(entry.badgeSlot)"
+        >
+          {{ entry.rank }}
+        </div>
+        <div
+          class="ranking-panel-template__name"
+          :class="{ 'ranking-panel-template__name--current': entry.current }"
+          :style="slotStyle(entry.nameSlot)"
+        >
+          {{ entry.playerName }}
+        </div>
+        <div
+          class="ranking-panel-template__score"
+          :class="{ 'ranking-panel-template__score--current': entry.current }"
+          :style="slotStyle(entry.scoreSlot)"
+        >
+          {{ entry.score }}
+        </div>
+      </template>
+    </template>
+
+    <div
+      v-else
+      class="ranking-panel__state"
+      :class="`ranking-panel__${panelState}`"
+      :style="slotStyle(RANKING_SLOTS.state)"
+    >
+      <span v-if="panelState === 'loading'">
+        排行榜加载中...
+      </span>
+      <span v-else-if="panelState === 'error'">
+        排行榜暂时无法加载
+      </span>
+      <span v-else>
+        暂无排行榜数据
+      </span>
+    </div>
+  </section>
+</template>
